@@ -1,0 +1,70 @@
+<div class="item-detail-container">
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-card>
+      <mat-card-content>
+        <mat-icon color="warn">error</mat-icon>
+        <p>{{error}}</p>
+        <button mat-raised-button color="primary" routerLink="/items">Back to Items</button>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <mat-card class="item-detail-card" *ngIf="!loading && !error && item">
+    <mat-card-header>
+      <mat-card-title>{{item.name}}</mat-card-title>
+      <mat-card-subtitle>Category: {{item.category}}</mat-card-subtitle>
+    </mat-card-header>
+
+    <div class="item-content">
+      <div class="image-gallery">
+        <img [src]="item.imageUrl" [alt]="item.name" class="main-image">
+        <!-- Additional images can be added here -->
+      </div>
+
+      <div class="item-info">
+        <div class="price-section">
+          <h2 class="price">${{item.price}}</h2>
+          <mat-chip-set>
+            <mat-chip color="primary">{{item.category}}</mat-chip>
+          </mat-chip-set>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="description-section">
+          <h3>Description</h3>
+          <p>{{item.description}}</p>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="seller-section">
+          <h3>Seller Information</h3>
+          <p>
+            <mat-icon>person</mat-icon>
+            {{item.seller.name}}
+          </p>
+          <p>
+            <mat-icon>star</mat-icon>
+            Rating: {{item.seller.rating}} / 5
+          </p>
+        </div>
+
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" (click)="addToCart()">
+            <mat-icon>shopping_cart</mat-icon>
+            Add to Cart
+          </button>
+          <button mat-raised-button color="accent" (click)="contactSeller()">
+            <mat-icon>mail</mat-icon>
+            Contact Seller
+          </button>
+        </div>
+      </div>
+    </div>
+  </mat-card>
+</div>

@@ -1,0 +1,131 @@
+<div class="member-item-form-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>{{isEditMode ? 'Edit Item' : 'Add New Item'}}</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div *ngIf="error" class="error-message">
+        <mat-error>{{error}}</mat-error>
+      </div>
+
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner></mat-spinner>
+      </div>
+
+      <form [formGroup]="itemForm" (ngSubmit)="onSubmit()" *ngIf="!loading">
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Name</mat-label>
+            <input matInput formControlName="name" required>
+            <mat-error *ngIf="itemForm.get('name')?.hasError('required')">
+              Name is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Category</mat-label>
+            <mat-select formControlName="category" required>
+              <mat-option *ngFor="let category of categories" [value]="category">
+                {{category}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="itemForm.get('category')?.hasError('required')">
+              Category is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Condition</mat-label>
+            <mat-select formControlName="condition" required>
+              <mat-option *ngFor="let condition of conditions" [value]="condition">
+                {{condition}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="itemForm.get('condition')?.hasError('required')">
+              Condition is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Estimated Value</mat-label>
+            <input matInput formControlName="estimatedValue" required>
+            <mat-error *ngIf="itemForm.get('estimatedValue')?.hasError('required')">
+              Estimated value is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row image-section">
+          <h3>Item Images</h3>
+          
+          <div class="image-options">
+            <button type="button" mat-raised-button color="primary" (click)="openCameraCapture()">
+              <mat-icon>photo_camera</mat-icon>
+              Take Photo
+            </button>
+            
+            <button type="button" mat-raised-button color="accent" (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon>
+              Upload Image
+            </button>
+            
+            <input #fileInput type="file" accept="image/*" style="display: none" (change)="onFileSelected($event)">
+          </div>
+          
+          <div class="images-container" formArrayName="images">
+            <div *ngIf="images.length === 0" class="no-images">
+              <p>No images added yet. Add images using the buttons above.</p>
+            </div>
+            
+            <div *ngFor="let image of images.controls; let i = index" class="image-item">
+              <div class="image-preview">
+                <img [src]="image.value" alt="Item image {{i+1}}">
+              </div>
+              <div class="image-actions">
+                <button type="button" mat-icon-button color="warn" (click)="removeImage(i)" matTooltip="Remove image">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div formGroupName="appraisal">
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Item Details</mat-label>
+              <textarea matInput formControlName="details" rows="5" required></textarea>
+              <mat-error *ngIf="itemForm.get('appraisal.details')?.hasError('required')">
+                Item details are required
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Market Research</mat-label>
+              <textarea matInput formControlName="marketResearch" rows="5" required></textarea>
+              <mat-error *ngIf="itemForm.get('appraisal.marketResearch')?.hasError('required')">
+                Market research is required
+              </mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button mat-button type="button" (click)="onCancel()">Cancel</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="itemForm.invalid || loading">
+            {{isEditMode ? 'Update Item' : 'Create Item'}}
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div> 

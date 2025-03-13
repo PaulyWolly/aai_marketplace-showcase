@@ -1,0 +1,76 @@
+<div class="marketplace-container">
+  <div class="header">
+    <h1>Marketplace</h1>
+    <p>Browse items from our community</p>
+  </div>
+
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <div class="search-field">
+        <mat-form-field appearance="outline">
+          <mat-label>Search</mat-label>
+          <input matInput placeholder="Search..." [(ngModel)]="searchText" (keyup.enter)="onSearch()">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
+
+      <div class="filter-fields">
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
+            <mat-option value="">All Categories</mat-option>
+            <mat-option *ngFor="let category of categories" [value]="category">
+              {{category}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Sort By</mat-label>
+          <mat-select [(ngModel)]="sortBy" (selectionChange)="onSortChange()">
+            <mat-option value="newest">Newest First</mat-option>
+            <mat-option value="price_asc">Price: Low to High</mat-option>
+            <mat-option value="price_desc">Price: High to Low</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+  </div>
+
+  <div *ngIf="!loading && filteredItems.length === 0" class="empty-state">
+    <mat-icon>sentiment_dissatisfied</mat-icon>
+    <p>No items found matching your criteria.</p>
+    <button mat-raised-button color="primary" (click)="loadItems()">Refresh</button>
+  </div>
+
+  <div class="items-grid">
+    <mat-card *ngFor="let item of filteredItems" class="item-card" (click)="viewItemDetails(item)">
+      <img mat-card-image [src]="item.imageUrl" [alt]="item.name" 
+           onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22200%22%20height%3D%22200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23CCCCCC%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20alignment-baseline%3D%22middle%22%20fill%3D%22%23333333%22%3EImage%20Not%20Available%3C%2Ftext%3E%3C%2Fsvg%3E'">
+      <mat-card-content>
+        <h3>{{item.name}}</h3>
+        <div class="item-details">
+          <span class="category-badge">{{item.category}}</span>
+          <span class="condition-badge">{{item.condition}}</span>
+        </div>
+        <p class="price">{{item.estimatedValue}}</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button color="primary">
+          <mat-icon>visibility</mat-icon> View Details
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+  
+  <!-- Add more bottom padding to ensure all items are visible -->
+  <div style="height: 150px;"></div>
+</div> 

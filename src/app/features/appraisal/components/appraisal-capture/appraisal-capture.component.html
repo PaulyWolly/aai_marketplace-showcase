@@ -1,0 +1,94 @@
+<!-- Camera Controls Panel -->
+<div class="camera-control-panel">
+  <mat-card>
+    <mat-card-content>
+      <!-- Device Selection -->
+      <div class="device-selection">
+        <mat-form-field appearance="outline">
+          <mat-label>Select Camera</mat-label>
+          <mat-select [(ngModel)]="selectedDevice" (selectionChange)="onCameraSelect($event)">
+            <mat-option *ngFor="let device of devices" [value]="device.deviceId">
+              {{device.label || 'Camera ' + (devices.indexOf(device) + 1)}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+        
+        <button mat-icon-button color="primary" (click)="refreshDevices()" [disabled]="isScanning"
+                matTooltip="Refresh camera list">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+
+      <!-- Connection Controls -->
+      <div class="connection-controls">
+        <button mat-raised-button color="primary" (click)="connectCamera()" 
+                [disabled]="!selectedDevice || isCameraActive">
+          <mat-icon>videocam</mat-icon>
+          Start Camera
+        </button>
+        <button mat-raised-button color="warn" (click)="disconnectCamera()" 
+                [disabled]="!isCameraActive">
+          <mat-icon>videocam_off</mat-icon>
+          Stop Camera
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Error Display -->
+<div class="error-container" *ngIf="error">
+  <mat-card class="error-card">
+    <mat-card-content>
+      <mat-icon color="warn">error</mat-icon>
+      <p>{{ error }}</p>
+      <button mat-raised-button color="primary" (click)="refreshDevices()">
+        Try Again
+      </button>
+    </mat-card-content>
+  </mat-card>
+</div>
+
+<!-- Camera View -->
+<div class="capture-container" *ngIf="!error">
+  <div class="camera-container" *ngIf="showWebcam && !imageData">
+    <webcam
+      [trigger]="triggerObservable"
+      [videoOptions]="videoOptions"
+      [width]="webcamConfig.width"
+      [height]="webcamConfig.height"
+      [imageQuality]="webcamConfig.imageQuality"
+      [imageType]="webcamConfig.imageType"
+      (initError)="handleInitError($event)"
+      (imageCapture)="handleImage($event)">
+    </webcam>
+
+    <!-- Capture Controls -->
+    <div class="camera-controls" *ngIf="isCameraActive">
+      <button mat-fab color="primary" (click)="triggerSnapshot()" aria-label="Take photo">
+        <mat-icon>camera</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Preview View -->
+  <div class="preview-container" *ngIf="imageData">
+    <img [src]="imageData" alt="Captured image">
+    <div class="preview-controls">
+      <button mat-raised-button color="warn" (click)="retake()" [disabled]="analyzing">
+        <mat-icon>replay</mat-icon>
+        Retake
+      </button>
+      <button mat-raised-button color="primary" (click)="analyze()" [disabled]="analyzing">
+        <mat-icon>analytics</mat-icon>
+        {{ analyzing ? 'Analyzing...' : 'Analyze' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div class="loading-overlay" *ngIf="analyzing">
+    <mat-spinner diameter="48"></mat-spinner>
+    <p>Analyzing image...</p>
+  </div>
+</div> 

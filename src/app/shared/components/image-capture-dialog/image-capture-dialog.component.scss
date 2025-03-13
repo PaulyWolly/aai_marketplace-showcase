@@ -1,0 +1,97 @@
+.compact-dialog {
+  width: 520px;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  .camera-error {
+    color: #f44336;
+    margin-bottom: 8px;
+    text-align: center;
+    
+    h3 {
+      margin-bottom: 4px;
+    }
+  }
+  
+  .camera-selection {
+    width: 100%;
+    margin-bottom: 8px;
+    
+    .compact-field {
+      margin-bottom: 0;
+      
+      ::ng-deep .mat-mdc-form-field-infix {
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+      
+      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+  
+  .webcam-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    webcam {
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .camera-controls {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      margin-bottom: 0;
+      
+      button {
+        display: flex;
+        align-items: center;
+        
+        mat-icon {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+  
+  .snapshot-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    img {
+      max-width: 100%;
+      max-height: 360px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .snapshot-controls {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+      margin-bottom: 0;
+      
+      button {
+        display: flex;
+        align-items: center;
+        
+        mat-icon {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+} 

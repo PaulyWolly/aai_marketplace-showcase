@@ -1,0 +1,147 @@
+.marketplace-container {
+  padding: 20px;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  width: 100%;
+  
+  .header {
+    margin-bottom: 24px;
+    text-align: center;
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    
+    p {
+      font-size: 16px;
+      color: #666;
+    }
+  }
+  
+  .filter-card {
+    margin-bottom: 24px;
+    
+    .search-field {
+      width: 100%;
+      margin-bottom: 16px;
+      
+      mat-form-field {
+        width: 100%;
+      }
+    }
+    
+    .filter-fields {
+      display: flex;
+      gap: 16px;
+      
+      mat-form-field {
+        flex: 1;
+      }
+      
+      @media (max-width: 768px) {
+        flex-direction: column;
+      }
+    }
+  }
+  
+  .error-message {
+    margin-bottom: 16px;
+  }
+  
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 48px 0;
+    
+    mat-icon {
+      font-size: 48px;
+      height: 48px;
+      width: 48px;
+      color: #999;
+      margin-bottom: 16px;
+    }
+    
+    p {
+      font-size: 18px;
+      color: #666;
+      margin-bottom: 24px;
+    }
+  }
+  
+  .items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin-bottom: 100px;
+    
+    .item-card {
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      
+      &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      }
+      
+      img {
+        height: 200px;
+        object-fit: cover;
+      }
+      
+      h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 500;
+      }
+      
+      .item-details {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 8px;
+        
+        .category-badge, .condition-badge {
+          font-size: 12px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          background-color: #f0f0f0;
+        }
+        
+        .category-badge {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+        
+        .condition-badge {
+          background-color: #e8f5e9;
+          color: #388e3c;
+        }
+      }
+      
+      .price {
+        font-size: 18px;
+        font-weight: 500;
+        color: #d32f2f;
+        margin: 8px 0;
+      }
+      
+      mat-card-actions {
+        padding: 8px;
+        display: flex;
+        justify-content: center;
+      }
+    }
+  }
+} 

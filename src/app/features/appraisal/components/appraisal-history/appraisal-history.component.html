@@ -1,0 +1,59 @@
+<div class="appraisal-history-container">
+  <div class="header">
+    <h1>Your Appraisal History</h1>
+    <button mat-raised-button color="primary" (click)="newAppraisal()">
+      <mat-icon>add_a_photo</mat-icon>
+      New Appraisal
+    </button>
+  </div>
+
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+  </div>
+
+  <div *ngIf="!loading && appraisals.length === 0" class="empty-state">
+    <mat-icon>sentiment_dissatisfied</mat-icon>
+    <p>You don't have any appraisals yet.</p>
+    <button mat-raised-button color="primary" (click)="newAppraisal()">
+      Create Your First Appraisal
+    </button>
+  </div>
+
+  <div *ngIf="!loading && appraisals.length > 0" class="appraisals-grid">
+    <mat-card *ngFor="let appraisal of appraisals" class="appraisal-card">
+      <mat-card-header>
+        <mat-card-title>{{appraisal.name}}</mat-card-title>
+        <mat-card-subtitle>
+          <span class="category-badge">{{appraisal.category}}</span>
+          <span class="condition-badge">{{appraisal.condition}}</span>
+        </mat-card-subtitle>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div class="appraisal-details">
+          <div class="value-section">
+            <span class="label">Estimated Value:</span>
+            <span class="value">{{appraisal.estimatedValue}}</span>
+          </div>
+          <div class="date-section">
+            <span class="label">Appraised on:</span>
+            <span class="value">{{appraisal.timestamp ? (appraisal.timestamp | date:'medium') : 'N/A'}}</span>
+          </div>
+        </div>
+      </mat-card-content>
+      
+      <mat-card-actions>
+        <button mat-button color="primary" (click)="viewAppraisal(appraisal._id!)">
+          <mat-icon>visibility</mat-icon> View Details
+        </button>
+        <button mat-button color="warn" (click)="deleteAppraisal(appraisal._id!)">
+          <mat-icon>delete</mat-icon> Delete
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div> 

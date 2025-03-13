@@ -1,0 +1,129 @@
+<div class="admin-dashboard">
+  <div class="dashboard-header">
+    <h1>Admin Dashboard</h1>
+  </div>
+
+  <div class="main-navigation">
+    <button mat-raised-button 
+            [class.active]="selectedSection === 'users'"
+            (click)="selectSection('users')" 
+            class="nav-button">
+      <mat-icon>people</mat-icon>
+      User Management
+    </button>
+    <button mat-raised-button 
+            [class.active]="selectedSection === 'items'"
+            (click)="selectSection('items')" 
+            class="nav-button">
+      <mat-icon>inventory_2</mat-icon>
+      Item Management
+    </button>
+    <button mat-raised-button 
+            [class.active]="selectedSection === 'passwords'"
+            (click)="selectSection('passwords')" 
+            class="nav-button">
+      <mat-icon>password</mat-icon>
+      Password Management
+    </button>
+  </div>
+
+  <!-- Content Section -->
+  <div class="content-section">
+    <!-- User Management Section -->
+    <div *ngIf="selectedSection === 'users'" class="section-content">
+      <div class="user-management-container">
+        <app-user-management></app-user-management>
+      </div>
+    </div>
+
+    <!-- Item Management Section -->
+    <div *ngIf="selectedSection === 'items'" class="section-content">
+      <div class="action-buttons">
+        <button mat-raised-button color="primary" routerLink="/admin/items/new">
+          <mat-icon>add</mat-icon>
+          Add New Item
+        </button>
+        <button mat-raised-button color="accent" routerLink="/appraisal/capture">
+          <mat-icon>photo_camera</mat-icon>
+          Appraise New Item
+        </button>
+      </div>
+
+      <!-- Item Management Content -->
+      <div class="item-management-content">
+        <!-- Show member list if no member is selected -->
+        <div *ngIf="!selectedMemberId" class="member-selection">
+          <h2>Select a Member to View Their Items</h2>
+          <app-user-management [itemManagementMode]="true" (memberSelected)="onMemberSelected($event)"></app-user-management>
+        </div>
+        
+        <!-- Show member items if a member is selected -->
+        <div *ngIf="selectedMemberId" class="member-items">
+          <div class="member-header">
+            <button mat-raised-button color="primary" (click)="clearSelectedMember()">
+              <mat-icon>arrow_back</mat-icon>
+              Back to Member List
+            </button>
+          </div>
+          <app-item-management [userItemsOnly]="true" [userId]="selectedMemberId" [userName]="selectedMemberName"></app-item-management>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Management Section -->
+    <div *ngIf="selectedSection === 'passwords'" class="section-content">
+      <div class="password-management-container">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Password Management</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <p>Use these tools to manage user passwords across the system.</p>
+            
+            <div class="password-actions">
+              <mat-card class="action-card">
+                <mat-card-header>
+                  <mat-card-title>Reset Individual Password</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <p>Reset the password for a specific user. The new password will be displayed once.</p>
+                </mat-card-content>
+                <mat-card-actions>
+                  <button mat-raised-button color="primary" (click)="goToUserManagement()">
+                    <mat-icon>people</mat-icon>
+                    Go to User Management
+                  </button>
+                </mat-card-actions>
+              </mat-card>
+
+              <mat-card class="action-card">
+                <mat-card-header>
+                  <mat-card-title>Reset All Admin Passwords</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                  <p>Reset passwords for all admin users to a single new password.</p>
+                  <mat-form-field appearance="outline" class="password-field">
+                    <mat-label>New Password</mat-label>
+                    <input matInput [type]="hidePassword ? 'password' : 'text'" [(ngModel)]="newAdminPassword">
+                    <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword" type="button">
+                      <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                  </mat-form-field>
+                </mat-card-content>
+                <mat-card-actions>
+                  <button mat-raised-button color="warn" [disabled]="!newAdminPassword || resetLoading" (click)="resetAllAdminPasswords()">
+                    <mat-spinner diameter="20" *ngIf="resetLoading"></mat-spinner>
+                    <span *ngIf="!resetLoading">Reset All Admin Passwords</span>
+                  </button>
+                  <button mat-button color="primary" (click)="generatePassword()">
+                    Generate Password
+                  </button>
+                </mat-card-actions>
+              </mat-card>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</div> 

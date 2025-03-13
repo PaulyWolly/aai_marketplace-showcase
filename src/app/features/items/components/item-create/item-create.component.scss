@@ -1,0 +1,47 @@
+.create-item-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.create-item-card {
+  mat-card-header {
+    margin-bottom: 20px;
+  }
+
+  mat-card-content {
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+  }
+}
+
+.form-row {
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.seller-info {
+  margin-top: 24px;
+  
+  h3 {
+    margin-bottom: 16px;
+    color: rgba(0, 0, 0, 0.87);
+    font-size: 1.1rem;
+  }
+}
+
+mat-card-actions {
+  padding: 16px;
+  gap: 8px;
+}
+
+.mat-mdc-card {
+  margin-top: 50px;
+  height: 650px;
+  overflow: scroll;
+  overflow-x: hidden;
+}

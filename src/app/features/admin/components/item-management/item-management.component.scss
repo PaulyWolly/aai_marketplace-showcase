@@ -1,0 +1,76 @@
+.item-management-container {
+  padding: 20px;
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    h1 {
+      margin: 0;
+    }
+  }
+  
+  .filter-card {
+    margin-bottom: 20px;
+    
+    mat-form-field {
+      width: 100%;
+    }
+  }
+  
+  .error-message {
+    margin-bottom: 20px;
+  }
+  
+  .table-container {
+    position: relative;
+    min-height: 200px;
+    overflow: auto;
+    
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    
+    table {
+      width: 100%;
+      
+      .mat-column-actions {
+        width: 120px;
+        text-align: center;
+      }
+      
+      .mat-column-userName {
+        min-width: 150px;
+        font-weight: 500;
+      }
+      
+      .mat-column-name {
+        min-width: 150px;
+      }
+      
+      .mat-column-category,
+      .mat-column-condition {
+        min-width: 120px;
+      }
+      
+      .mat-column-estimatedValue {
+        min-width: 100px;
+      }
+      
+      .mat-column-timestamp {
+        min-width: 180px;
+      }
+    }
+  }
+}

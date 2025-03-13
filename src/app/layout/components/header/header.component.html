@@ -1,0 +1,35 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="toggleMenu()">
+    <mat-icon>menu</mat-icon>
+  </button>
+  
+  <span>AAI - Appraise An Item</span>
+  
+  <span class="spacer"></span>
+  
+  <ng-container *ngIf="!(authService.isAuthenticated$ | async)">
+    <a mat-button routerLink="/auth/login">Login</a>
+    <a mat-button routerLink="/auth/register">Register</a>
+  </ng-container>
+
+  <ng-container *ngIf="authService.isAuthenticated$ | async">
+    <button mat-button [matMenuTriggerFor]="userMenu">
+      <mat-icon>account_circle</mat-icon>
+      {{ (authService.user$ | async)?.firstName }}
+    </button>
+    <mat-menu #userMenu="matMenu">
+      <a mat-menu-item routerLink="/profile">
+        <mat-icon>person</mat-icon>
+        <span>Profile</span>
+      </a>
+      <a mat-menu-item routerLink="/admin" *ngIf="authService.isAdmin$ | async">
+        <mat-icon>admin_panel_settings</mat-icon>
+        <span>Admin Dashboard</span>
+      </a>
+      <button mat-menu-item (click)="authService.logout()">
+        <mat-icon>exit_to_app</mat-icon>
+        <span>Logout</span>
+      </button>
+    </mat-menu>
+  </ng-container>
+</mat-toolbar>

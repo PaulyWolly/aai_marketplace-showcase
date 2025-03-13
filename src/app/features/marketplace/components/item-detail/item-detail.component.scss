@@ -1,0 +1,309 @@
+.item-detail-container {
+  padding: 20px;
+  height: auto;
+  overflow: visible;
+  
+  .back-button {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+  
+  .error-message {
+    margin-bottom: 16px;
+  }
+  
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 48px 0;
+  }
+  
+  .item-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    height: auto;
+    overflow: visible;
+    
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+    
+    .item-image-section {
+      height: auto;
+      
+      .main-image-container {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 16px;
+        
+        .main-image {
+          width: 100%;
+          max-height: 500px;
+          object-fit: contain;
+          border-radius: 8px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-button {
+          position: absolute;
+          background-color: rgba(255, 255, 255, 0.8);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          z-index: 1;
+          
+          &.prev-button {
+            left: 8px;
+          }
+          
+          &.next-button {
+            right: 8px;
+          }
+        }
+      }
+      
+      .thumbnails-container {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+        
+        .thumbnail {
+          width: 80px;
+          height: 80px;
+          border-radius: 4px;
+          overflow: hidden;
+          cursor: pointer;
+          border: 2px solid transparent;
+          transition: border-color 0.2s;
+          
+          &.active {
+            border-color: #1976d2;
+          }
+          
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+        }
+      }
+    }
+    
+    .item-info {
+      height: auto;
+      overflow: visible;
+      
+      .item-name {
+        font-size: 28px;
+        margin: 0 0 16px;
+        color: #333;
+      }
+      
+      .item-badges {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        
+        .category-badge, .condition-badge {
+          font-size: 14px;
+          padding: 4px 12px;
+          border-radius: 16px;
+        }
+        
+        .category-badge {
+          background-color: #e3f2fd;
+          color: #1976d2;
+        }
+        
+        .condition-badge {
+          background-color: #e8f5e9;
+          color: #388e3c;
+        }
+      }
+      
+      .item-price {
+        margin-bottom: 24px;
+        
+        h2 {
+          font-size: 32px;
+          color: #d32f2f;
+          margin: 0;
+        }
+      }
+      
+      .details-card, .market-research-card {
+        margin-bottom: 24px;
+        
+        mat-card-content {
+          padding: 16px;
+          max-height: none;
+          overflow: visible;
+          
+          // Styles for rendered markdown
+          ::ng-deep {
+            h1, h2, h3, h4, h5, h6 {
+              margin-top: 1em;
+              margin-bottom: 0.5em;
+              font-weight: 500;
+            }
+            
+            h1 {
+              font-size: 1.8em;
+            }
+            
+            h2 {
+              font-size: 1.5em;
+            }
+            
+            h3 {
+              font-size: 1.3em;
+            }
+            
+            p {
+              margin-bottom: 1em;
+              line-height: 1.5;
+            }
+            
+            ul, ol {
+              margin-left: 1.5em;
+              margin-bottom: 1em;
+            }
+            
+            li {
+              margin-bottom: 0.5em;
+            }
+            
+            strong {
+              font-weight: 600;
+            }
+            
+            em {
+              font-style: italic;
+            }
+            
+            code {
+              font-family: monospace;
+              background-color: #f5f5f5;
+              padding: 0.2em 0.4em;
+              border-radius: 3px;
+            }
+            
+            pre {
+              background-color: #f5f5f5;
+              padding: 1em;
+              border-radius: 5px;
+              overflow-x: auto;
+              margin-bottom: 1em;
+            }
+            
+            blockquote {
+              border-left: 4px solid #e0e0e0;
+              padding-left: 1em;
+              margin-left: 0;
+              color: #757575;
+            }
+            
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin-bottom: 1em;
+              
+              th, td {
+                border: 1px solid #e0e0e0;
+                padding: 0.5em;
+                text-align: left;
+              }
+              
+              th {
+                background-color: #f5f5f5;
+              }
+            }
+          }
+        }
+      }
+      
+      .action-buttons {
+        display: flex;
+        gap: 16px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+        
+        button {
+          flex: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          
+          mat-icon {
+            margin-right: 8px;
+          }
+        }
+      }
+    }
+  }
+}
+
+.owner-card {
+  margin-bottom: 20px;
+  
+  .owner-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .owner-info {
+    p {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 400;
+    }
+    
+    strong {
+      font-weight: 500;
+      margin-right: 5px;
+    }
+  }
+  
+  .owner-info-error {
+    color: #f44336;
+    font-style: italic;
+  }
+  
+  mat-card-actions {
+    padding: 8px 16px 16px;
+    
+    button {
+      width: 100%;
+      margin-top: 8px;
+    }
+  }
+}
+
+.admin-card {
+  margin-bottom: 20px;
+  
+  .owner-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .owner-info {
+    p {
+      margin: 0;
+      font-size: 16px;
+    }
+  }
+  
+  mat-card-actions {
+    padding: 8px 16px 16px;
+  }
+} 

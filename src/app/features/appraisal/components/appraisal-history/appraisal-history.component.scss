@@ -1,0 +1,78 @@
+.history-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  margin-top: 80px;
+
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  .error-message {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+
+    mat-icon {
+      font-size: 48px;
+      height: 48px;
+      width: 48px;
+      margin-bottom: 16px;
+      color: rgba(0, 0, 0, 0.54);
+    }
+
+    p {
+      margin-bottom: 24px;
+      color: rgba(0, 0, 0, 0.54);
+    }
+
+    button mat-icon {
+      font-size: 24px;
+      height: 24px;
+      width: 24px;
+      margin-right: 8px;
+    }
+  }
+
+  .appraisal-item {
+    margin-bottom: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    img {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .item-title {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-date {
+      color: rgba(0, 0, 0, 0.54);
+      font-size: 0.9em;
+    }
+  }
+
+  .action-button {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+  }
+} 

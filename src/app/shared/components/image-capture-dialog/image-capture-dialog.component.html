@@ -1,0 +1,59 @@
+<h2 mat-dialog-title>Take a Photo</h2>
+
+<mat-dialog-content class="compact-dialog">
+  <div class="camera-container">
+    <div *ngIf="errors.length > 0" class="camera-error">
+      <h3>Camera Error</h3>
+      <p *ngFor="let error of errors">{{error | json}}</p>
+    </div>
+
+    <div *ngIf="multipleWebcamsAvailable" class="camera-selection">
+      <mat-form-field appearance="outline" class="compact-field">
+        <mat-label>Camera</mat-label>
+        <mat-select [value]="deviceId" (selectionChange)="changeWebcam($event.value)">
+          <mat-option *ngFor="let device of availableDevices; let i = index" [value]="device.deviceId">
+            {{device.label || 'Camera ' + (i+1)}}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div *ngIf="showWebcam" class="webcam-container">
+      <webcam
+        [height]="360"
+        [width]="480"
+        [trigger]="triggerObservable"
+        (imageCapture)="handleImage($event)"
+        [videoOptions]="videoOptions"
+        [allowCameraSwitch]="false"
+        [switchCamera]="nextWebcamObservable"
+        (cameraSwitched)="cameraWasSwitched($event)"
+        (initError)="handleInitError($event)"
+      ></webcam>
+      
+      <div class="camera-controls">
+        <button mat-raised-button color="primary" (click)="triggerSnapshot()">
+          <mat-icon>photo_camera</mat-icon> Capture
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="webcamImage" class="snapshot-container">
+      <img [src]="webcamImage.imageAsDataUrl" alt="Captured image">
+      
+      <div class="snapshot-controls">
+        <button mat-raised-button color="warn" (click)="retake()">
+          <mat-icon>refresh</mat-icon> Retake
+        </button>
+        
+        <button mat-raised-button color="primary" (click)="useImage()">
+          <mat-icon>check</mat-icon> Use This Image
+        </button>
+      </div>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancel</button>
+</mat-dialog-actions> 

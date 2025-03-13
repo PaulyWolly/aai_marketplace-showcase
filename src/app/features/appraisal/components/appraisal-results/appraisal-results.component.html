@@ -1,0 +1,79 @@
+<div class="appraisal-results-container">
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
+
+  <div *ngIf="!appraisalData" class="no-data">
+    <p>No appraisal data available. Please try again.</p>
+    <button mat-raised-button color="primary" (click)="newAppraisal()">
+      <mat-icon>photo_camera</mat-icon>
+      New Appraisal
+    </button>
+  </div>
+
+  <div *ngIf="appraisalData" class="results-content">
+    <mat-card class="summary-card">
+      <mat-card-header>
+        <mat-card-title>
+          <span *ngIf="appraisalData.name">{{appraisalData.name}}</span>
+          <span *ngIf="!appraisalData.name">Item Analysis</span>
+        </mat-card-title>
+        <mat-card-subtitle>
+          <span class="category-badge" *ngIf="appraisalData.category">{{appraisalData.category}}</span>
+          <span class="condition-badge" *ngIf="appraisalData.condition">{{appraisalData.condition}}</span>
+          <span class="value-badge" *ngIf="appraisalData.estimatedValue">{{appraisalData.estimatedValue}}</span>
+        </mat-card-subtitle>
+      </mat-card-header>
+
+      <img *ngIf="appraisalData.imageUrl" [src]="appraisalData.imageUrl" alt="Item image" class="item-image">
+
+      <mat-card-content>
+        <mat-tab-group>
+          <mat-tab label="Analysis">
+            <div class="analysis-content markdown-content">
+              <div *ngIf="renderedDetails" [innerHTML]="renderedDetails" class="markdown-rendered"></div>
+              <div *ngIf="!renderedDetails" class="loading-message">Loading analysis...</div>
+              
+              <div class="debug-section" *ngIf="showDebug">
+                <h3>Raw Markdown:</h3>
+                <pre>{{appraisalData.appraisal.details}}</pre>
+                
+                <h3>Rendered HTML:</h3>
+                <pre>{{debugHtml.details}}</pre>
+              </div>
+            </div>
+          </mat-tab>
+          <mat-tab label="Market Research">
+            <div class="market-research-content markdown-content">
+              <div *ngIf="renderedMarketResearch" [innerHTML]="renderedMarketResearch" class="markdown-rendered"></div>
+              <div *ngIf="!renderedMarketResearch" class="loading-message">Loading market research...</div>
+              
+              <div class="debug-section" *ngIf="showDebug">
+                <h3>Raw Markdown:</h3>
+                <pre>{{appraisalData.appraisal.marketResearch}}</pre>
+                
+                <h3>Rendered HTML:</h3>
+                <pre>{{debugHtml.marketResearch}}</pre>
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="saveAppraisal()" [disabled]="isSaving">
+          <mat-icon>save</mat-icon>
+          {{isSaving ? 'Saving...' : 'Save to My Items'}}
+        </button>
+        <button mat-button (click)="newAppraisal()">
+          <mat-icon>photo_camera</mat-icon>
+          New Appraisal
+        </button>
+        <button mat-button color="accent" (click)="toggleDebug()">
+          <mat-icon>bug_report</mat-icon>
+          {{showDebug ? 'Hide Debug' : 'Show Debug'}}
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div> 

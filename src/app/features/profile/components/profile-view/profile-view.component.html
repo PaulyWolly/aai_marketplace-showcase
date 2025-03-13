@@ -1,0 +1,43 @@
+<div class="profile-container">
+  <mat-card class="profile-card">
+    <mat-card-header>
+      <mat-card-title>Profile</mat-card-title>
+      <mat-card-subtitle>Your Account Information</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="profile-info" *ngIf="currentUser">
+        <div class="info-row">
+          <mat-icon>person</mat-icon>
+          <div class="info-content">
+            <span class="label">Name</span>
+            <span class="value">{{currentUser.firstName}} {{currentUser.lastName}}</span>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <mat-icon>email</mat-icon>
+          <div class="info-content">
+            <span class="label">Email</span>
+            <span class="value">{{currentUser.email}}</span>
+          </div>
+        </div>
+
+        <div class="info-row">
+          <mat-icon>badge</mat-icon>
+          <div class="info-content">
+            <span class="label">Role</span>
+            <span class="value">{{currentUser.role | titlecase}}</span>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-raised-button color="primary" (click)="onEdit()">
+        <mat-icon>edit</mat-icon>
+        Edit Profile
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

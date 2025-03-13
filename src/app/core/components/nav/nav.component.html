@@ -1,0 +1,72 @@
+<mat-toolbar color="primary">
+  <mat-toolbar-row>
+    <a mat-button routerLink="/">
+      <mat-icon>store</mat-icon>
+      Marketplace
+    </a>
+    
+    <span class="spacer"></span>
+
+    <!-- Show these links only when user is logged in -->
+    <ng-container *ngIf="authService.isLoggedIn()">
+      <a mat-button routerLink="/items">
+        <mat-icon>shopping_bag</mat-icon>
+        Items
+      </a>
+      
+      <!-- Show admin link only for admin users -->
+      <a mat-button routerLink="/admin" *ngIf="authService.isAdmin()">
+        <mat-icon>admin_panel_settings</mat-icon>
+        Admin
+      </a>
+
+      <!-- User info and menu -->
+      <button mat-button [matMenuTrigger]="userMenu">
+        <mat-icon>account_circle</mat-icon>
+        {{ currentUser?.firstName }} {{ currentUser?.lastName }}
+        <mat-icon>arrow_drop_down</mat-icon>
+      </button>
+      
+      <mat-menu #userMenu="matMenu">
+        <a mat-menu-item routerLink="/profile">
+          <mat-icon>person</mat-icon>
+          <span>Profile</span>
+        </a>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </ng-container>
+
+    <!-- Show these links only when user is not logged in -->
+    <ng-container *ngIf="!authService.isLoggedIn()">
+      <a mat-button routerLink="/auth/login">
+        <mat-icon>login</mat-icon>
+        Login
+      </a>
+      <a mat-button routerLink="/auth/register">
+        <mat-icon>person_add</mat-icon>
+        Register
+      </a>
+    </ng-container>
+  </mat-toolbar-row>
+</mat-toolbar>
+
+<style>
+.spacer {
+  flex: 1 1 auto;
+}
+
+mat-toolbar-row {
+  padding: 0 16px;
+}
+
+.mat-button {
+  margin: 0 4px;
+}
+
+.mat-icon {
+  margin-right: 4px;
+}
+</style> 

@@ -1,0 +1,490 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* Global styles */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: #f5f5f5;
+  overflow: hidden; /* Prevent body scrolling */
+}
+
+/* Material Icons fixes */
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;  /* Preferred icon size */
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  vertical-align: middle;
+
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+  /* Support for IE. */
+  font-feature-settings: 'liga';
+}
+
+/* Main app container */
+app-root {
+  display: block;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Main content wrapper */
+.main-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Card styles */
+.mat-mdc-card {
+  margin: 16px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Remove scrollable container styles that cause multiple scrollbars */
+.scrollable-content {
+  max-height: none !important;
+  overflow: visible !important;
+  padding-right: 16px;
+}
+
+/* Form field styles */
+.mat-mdc-form-field {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+/* Button spacing */
+.mat-mdc-button,
+.mat-mdc-raised-button {
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+/* Grid container */
+.grid-container {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+/* Responsive padding */
+@media (max-width: 600px) {
+  .main-content {
+    padding: 16px;
+  }
+}
+
+/* Fix for Material card margins */
+.mat-mdc-card.mdc-card {
+  margin: 16px auto;
+  position: relative;
+  max-width: 1200px;
+}
+
+mat-sidenav-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+mat-sidenav {
+  width: 250px;
+  overflow-y: auto;
+  transition: width 0.3s ease;
+  
+  &.collapsed {
+    width: 64px;
+  }
+}
+
+mat-sidenav-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  transition: margin-left 0.3s ease;
+  
+  &.expanded {
+    // No specific margin needed as the sidenav handles the space
+  }
+}
+
+// Header styling
+app-header {
+  height: 64px;
+  min-height: 64px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+  width: 100%;
+}
+
+// Feature components base styles
+app-admin-dashboard,
+app-user-management,
+app-item-management,
+app-appraisal-capture,
+app-appraisal-results,
+app-appraisal-history,
+app-marketplace,
+app-item-detail {
+  display: block;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+// Fix for marketplace items grid
+.items-grid {
+  height: auto !important;
+  overflow: visible !important;
+  min-height: auto !important;
+  max-height: none !important;
+  margin-bottom: 100px !important; // Add more bottom margin
+}
+
+// Camera view specific styles
+app-appraisal-capture {
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+}
+
+.webcam-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.snapshot-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+// Material Dialog adjustments
+.mat-dialog-container {
+  margin: 64px auto !important;
+}
+
+// Responsive adjustments
+@media (max-width: 600px) {
+  .main-content {
+    padding: 16px;
+  }
+
+  app-header {
+    height: 56px;
+    min-height: 56px;
+  }
+
+  mat-sidenav {
+    width: 200px;
+  }
+
+  app-admin-dashboard,
+  app-user-management,
+  app-item-management,
+  app-appraisal-capture,
+  app-appraisal-results,
+  app-appraisal-history,
+  app-marketplace,
+  app-item-detail {
+    padding: 16px;
+  }
+
+  .webcam-container,
+  .snapshot-container {
+    max-width: 100%;
+  }
+}
+
+/* Camera dialog styles */
+.camera-dialog .mat-mdc-dialog-container {
+  padding: 0;
+  overflow: hidden;
+}
+
+.camera-dialog .mat-mdc-dialog-content {
+  max-height: none;
+  padding: 0 12px;
+  margin: 0;
+  overflow: hidden;
+}
+
+.camera-dialog .mat-mdc-dialog-title {
+  padding: 12px 12px 0 12px;
+  margin: 0;
+  font-size: 18px;
+}
+
+.camera-dialog .mat-mdc-dialog-actions {
+  padding: 0 12px 12px;
+  margin: 0;
+  min-height: auto;
+}
+
+/* Markdown Styles */
+.markdown-content {
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 500;
+  }
+  
+  h1 {
+    font-size: 1.8em;
+  }
+  
+  h2 {
+    font-size: 1.5em;
+  }
+  
+  h3 {
+    font-size: 1.3em;
+  }
+  
+  p {
+    margin-bottom: 1em;
+    line-height: 1.6;
+  }
+  
+  ul, ol {
+    margin-bottom: 1em;
+    padding-left: 2em;
+    
+    li {
+      margin-bottom: 0.5em;
+    }
+  }
+  
+  code {
+    background-color: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: monospace;
+  }
+  
+  pre {
+    background-color: #f5f5f5;
+    padding: 1em;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin-bottom: 1em;
+    
+    code {
+      background-color: transparent;
+      padding: 0;
+    }
+  }
+  
+  blockquote {
+    border-left: 4px solid #e0e0e0;
+    padding-left: 1em;
+    margin-left: 0;
+    margin-right: 0;
+    font-style: italic;
+  }
+  
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1em;
+    
+    th, td {
+      border: 1px solid #e0e0e0;
+      padding: 8px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: #f5f5f5;
+      font-weight: 500;
+    }
+    
+    tr:nth-child(even) {
+      background-color: #fafafa;
+    }
+  }
+  
+  strong {
+    font-weight: 600;
+  }
+  
+  em {
+    font-style: italic;
+  }
+}
+
+/* Camera Dialog Styles */
+.compact-dialog {
+  width: 520px;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.camera-error {
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.camera-selection {
+  margin-bottom: 10px;
+}
+
+.compact-field {
+  width: 100%;
+}
+
+.webcam-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  
+  .camera-controls {
+    margin-top: 10px;
+  }
+}
+
+.snapshot-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  img {
+    max-width: 100%;
+    max-height: 400px;
+    margin-bottom: 10px;
+  }
+  
+  .snapshot-controls {
+    display: flex;
+    gap: 10px;
+  }
+}
+
+// Custom tooltip styling
+.mat-tooltip {
+  font-size: 14px !important;
+  background-color: rgba(33, 33, 33, 0.9) !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  max-width: 200px !important;
+  word-break: keep-all !important;
+  white-space: normal !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+// Add a small delay to prevent tooltips from appearing too quickly
+.mat-tooltip-panel {
+  pointer-events: auto !important;
+  transition-delay: 300ms !important;
+}
+
+// Override Angular Material sidenav behavior
+.mat-drawer-container {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+  display: block;
+  overflow: hidden;
+}
+
+.mat-drawer-content {
+  position: relative;
+  z-index: 1;
+  display: block;
+  height: 100%;
+  overflow: auto;
+  transition: margin 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.mat-drawer {
+  position: relative;
+  z-index: 4;
+  display: block;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  outline: 0;
+  box-sizing: border-box;
+  overflow-y: auto;
+  transform: translate3d(-100%, 0, 0);
+  transition: transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.mat-drawer.mat-drawer-side {
+  z-index: 2;
+}
+
+.mat-drawer.mat-drawer-end {
+  right: 0;
+  transform: translate3d(100%, 0, 0);
+}
+
+.mat-drawer-inner-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mat-drawer-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: auto;
+  transition: opacity 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+  opacity: 0;
+}
+
+.mat-drawer-shown .mat-drawer-backdrop {
+  opacity: 1;
+}
+
+.mat-drawer-transition .mat-drawer-content {
+  transition: margin 400ms cubic-bezier(0.25, 0.8, 0.25, 1);
+}

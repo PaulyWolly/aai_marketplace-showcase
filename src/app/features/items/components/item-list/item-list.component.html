@@ -1,0 +1,64 @@
+<div class="items-container">
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <div class="search-field">
+        <mat-form-field appearance="outline">
+          <mat-label>Search</mat-label>
+          <input matInput placeholder="Search..." [(ngModel)]="searchText" (keyup.enter)="onSearch()">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
+
+      <div class="filter-fields">
+        <mat-form-field appearance="outline">
+          <mat-label>Category</mat-label>
+          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
+            <mat-option value="">All Categories</mat-option>
+            <mat-option *ngFor="let category of categories" [value]="category">
+              {{category}}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Sort By</mat-label>
+          <mat-select [(ngModel)]="sortBy" (selectionChange)="onSortChange()">
+            <mat-option value="newest">Newest First</mat-option>
+            <mat-option value="price_asc">Price: Low to High</mat-option>
+            <mat-option value="price_desc">Price: High to Low</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
+
+  <div class="items-grid">
+    <div *ngIf="loading" class="loading-overlay">
+      <mat-spinner></mat-spinner>
+    </div>
+
+    <mat-card *ngFor="let item of items" class="item-card" [routerLink]="['/items', item._id]">
+      <img mat-card-image [src]="item.imageUrl" [alt]="item.name">
+      <mat-card-content>
+        <h3>{{item.name}}</h3>
+        <p class="price">${{item.price}}</p>
+        <p class="description">{{item.description}}</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button color="primary">View Details</button>
+        <button mat-button color="accent">Add to Cart</button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <mat-paginator
+    [length]="totalItems"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[12, 24, 36]"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+</div>

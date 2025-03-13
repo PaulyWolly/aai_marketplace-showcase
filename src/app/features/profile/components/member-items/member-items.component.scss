@@ -1,0 +1,68 @@
+.member-items-container {
+  padding: 20px;
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    
+    h1 {
+      margin: 0;
+    }
+    
+    .actions {
+      display: flex;
+      gap: 10px;
+      
+      button {
+        display: flex;
+        align-items: center;
+        
+        mat-icon {
+          margin-right: 8px;
+        }
+      }
+    }
+  }
+  
+  .filter-card {
+    margin-bottom: 20px;
+    padding: 16px;
+    
+    mat-form-field {
+      width: 100%;
+    }
+  }
+  
+  .table-container {
+    position: relative;
+    overflow: auto;
+    
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1;
+    }
+    
+    table {
+      width: 100%;
+    }
+    
+    .mat-column-actions {
+      width: 120px;
+      text-align: center;
+    }
+  }
+  
+  .error-message {
+    margin-bottom: 16px;
+  }
+} 

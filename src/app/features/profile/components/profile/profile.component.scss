@@ -1,0 +1,51 @@
+.profile-container {
+  padding: 20px;
+  
+  .profile-card {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .profile-details {
+    margin-top: 20px;
+  }
+  
+  .user-info {
+    margin-bottom: 24px;
+    
+    h2 {
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+    
+    p {
+      color: #666;
+      margin-bottom: 4px;
+    }
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+    
+    button {
+      display: flex;
+      align-items: center;
+      
+      mat-icon {
+        margin-right: 8px;
+      }
+    }
+  }
+  
+  .error-message {
+    margin-bottom: 16px;
+  }
+  
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+  }
+} 

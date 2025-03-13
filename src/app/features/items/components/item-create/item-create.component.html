@@ -1,0 +1,136 @@
+<div class="create-item-container">
+  <mat-card class="create-item-card">
+    <mat-card-header>
+      <mat-card-title>Create New Item</mat-card-title>
+      <mat-card-subtitle>Fill in the details of your item</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="itemForm" (ngSubmit)="onSubmit()">
+        <div *ngIf="error" class="error-message">
+          <mat-error>{{error}}</mat-error>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Item Name</mat-label>
+            <input matInput formControlName="name" required>
+            <mat-error *ngIf="itemForm.get('name')?.hasError('required')">
+              Name is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Category</mat-label>
+            <mat-select formControlName="category" required>
+              <mat-option *ngFor="let category of categories" [value]="category">
+                {{category}}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="itemForm.get('category')?.hasError('required')">
+              Category is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Price</mat-label>
+            <input matInput type="number" formControlName="price" required>
+            <mat-icon matSuffix>attach_money</mat-icon>
+            <mat-error *ngIf="itemForm.get('price')?.hasError('required')">
+              Price is required
+            </mat-error>
+            <mat-error *ngIf="itemForm.get('price')?.hasError('min')">
+              Price must be greater than 0
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Condition</mat-label>
+            <mat-select formControlName="condition" required>
+              <mat-option value="New">New</mat-option>
+              <mat-option value="Like New">Like New</mat-option>
+              <mat-option value="Good">Good</mat-option>
+              <mat-option value="Fair">Fair</mat-option>
+              <mat-option value="Poor">Poor</mat-option>
+            </mat-select>
+            <mat-error *ngIf="itemForm.get('condition')?.hasError('required')">
+              Condition is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="4" required></textarea>
+            <mat-error *ngIf="itemForm.get('description')?.hasError('required')">
+              Description is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Image URL</mat-label>
+            <input matInput formControlName="imageUrl" required>
+            <mat-error *ngIf="itemForm.get('imageUrl')?.hasError('required')">
+              Image URL is required
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="seller-info">
+          <h3>Seller Information</h3>
+          <div formGroupName="seller">
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Name</mat-label>
+                <input matInput formControlName="name" required>
+                <mat-error *ngIf="itemForm.get('seller.name')?.hasError('required')">
+                  Seller name is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Email</mat-label>
+                <input matInput type="email" formControlName="email" required>
+                <mat-error *ngIf="itemForm.get('seller.email')?.hasError('required')">
+                  Email is required
+                </mat-error>
+                <mat-error *ngIf="itemForm.get('seller.email')?.hasError('email')">
+                  Please enter a valid email
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Phone</mat-label>
+                <input matInput formControlName="phone" required>
+                <mat-error *ngIf="itemForm.get('seller.phone')?.hasError('required')">
+                  Phone number is required
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </div>
+        </div>
+      </form>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-button type="button" (click)="onCancel()" [disabled]="loading">Cancel</button>
+      <button mat-raised-button color="primary" type="submit" [disabled]="!itemForm.valid || loading" (click)="onSubmit()">
+        <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+        <span *ngIf="!loading">Create Item</span>
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

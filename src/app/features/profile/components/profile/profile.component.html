@@ -1,0 +1,36 @@
+<div class="profile-container">
+  <mat-card class="profile-card">
+    <mat-card-header>
+      <mat-card-title>My Profile</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div *ngIf="error" class="error-message">
+        <mat-error>{{error}}</mat-error>
+      </div>
+      
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner></mat-spinner>
+      </div>
+      
+      <div *ngIf="currentUser" class="profile-details">
+        <div class="user-info">
+          <h2>{{currentUser.firstName}} {{currentUser.lastName}}</h2>
+          <p>{{currentUser.email}}</p>
+        </div>
+        
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" (click)="navigateToItems()">
+            <mat-icon>inventory_2</mat-icon>
+            Manage My Items
+          </button>
+          
+          <button mat-raised-button color="accent" (click)="navigateToAppraisal()">
+            <mat-icon>photo_camera</mat-icon>
+            Appraise New Item
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div> 

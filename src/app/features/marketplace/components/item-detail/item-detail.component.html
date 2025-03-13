@@ -1,0 +1,143 @@
+<div class="item-detail-container">
+  <button mat-button class="back-button" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon> Back to Marketplace
+  </button>
+
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+  </div>
+
+  <!-- Debug information -->
+  <div *ngIf="!loading && !item" class="debug-info">
+    <h3>Debug Information</h3>
+    <p>Item ID: {{route.snapshot.paramMap.get('id')}}</p>
+    <p>Error: {{error || 'No error message'}}</p>
+    <button mat-raised-button color="primary" (click)="loadItem()">Retry Loading</button>
+    <p>
+      <a [routerLink]="['/marketplace']">Return to Marketplace</a>
+    </p>
+  </div>
+
+  <div *ngIf="!loading && item" class="item-content">
+    <div class="item-image-section">
+      <div class="main-image-container">
+        <button *ngIf="allImages.length > 1" mat-icon-button class="nav-button prev-button" (click)="previousImage()">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        
+        <img [src]="currentImage" [alt]="item.name" class="main-image" 
+             (error)="handleImageError($event)" 
+             onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22200%22%20height%3D%22200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23CCCCCC%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20alignment-baseline%3D%22middle%22%20fill%3D%22%23333333%22%3EImage%20Not%20Available%3C%2Ftext%3E%3C%2Fsvg%3E'">
+        
+        <button *ngIf="allImages.length > 1" mat-icon-button class="nav-button next-button" (click)="nextImage()">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+      
+      <div *ngIf="allImages.length > 1" class="thumbnails-container">
+        <div 
+          *ngFor="let image of allImages; let i = index" 
+          class="thumbnail" 
+          [class.active]="i === currentImageIndex"
+          (click)="selectImage(i)"
+        >
+          <img [src]="image" [alt]="'Thumbnail ' + (i+1)">
+        </div>
+      </div>
+    </div>
+
+    <div class="item-info">
+      <h1 class="item-name">{{item.name}}</h1>
+      
+      <div class="item-badges">
+        <span class="category-badge">{{item.category || 'Uncategorized'}}</span>
+        <span class="condition-badge">{{item.condition || 'Unknown'}}</span>
+      </div>
+      
+      <div class="item-price">
+        <h2>{{item.estimatedValue || 'Not Appraised'}}</h2>
+      </div>
+      
+      <!-- Admin Information -->
+      <mat-card class="admin-card" *ngIf="isAdmin">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>admin_panel_settings</mat-icon>
+          <mat-card-title>Admin Information</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p><strong>Item ID:</strong> {{item._id}}</p>
+          <p><strong>User ID:</strong> {{item.userId}}</p>
+          <p><strong>Published:</strong> {{item.isPublished ? 'Yes' : 'No'}}</p>
+          <p><strong>Created:</strong> {{item.timestamp | date:'medium'}}</p>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)">
+            <mat-icon>edit</mat-icon> Edit Item
+          </button>
+        </mat-card-actions>
+      </mat-card>
+      
+      <!-- Owner Information -->
+      <mat-card class="owner-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>person</mat-icon>
+          <mat-card-title>Seller Information</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="ownerLoading" class="owner-loading">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Loading seller information...</span>
+          </div>
+          <div *ngIf="!ownerLoading && item.owner" class="owner-info">
+            <p><strong>Seller:</strong> {{item.owner.name}}</p>
+          </div>
+          <div *ngIf="!ownerLoading && !item.owner" class="owner-info-error">
+            <p>Seller information not available</p>
+          </div>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="contactOwner()" [disabled]="!item.owner">
+            <mat-icon>email</mat-icon> Contact Seller
+          </button>
+        </mat-card-actions>
+      </mat-card>
+      
+      <mat-card class="details-card">
+        <mat-card-header>
+          <mat-card-title>Item Details</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="renderedDetails" class="markdown-content" [innerHTML]="renderedDetails"></div>
+          <div *ngIf="!renderedDetails" class="fallback-content">
+            <p>No details available for this item.</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+      
+      <mat-card class="market-research-card">
+        <mat-card-header>
+          <mat-card-title>Market Research</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="renderedMarketResearch" class="markdown-content" [innerHTML]="renderedMarketResearch"></div>
+          <div *ngIf="!renderedMarketResearch" class="fallback-content">
+            <p>No market research available for this item.</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+      
+      <div class="action-buttons">
+        <button mat-raised-button color="primary">
+          <mat-icon>shopping_cart</mat-icon> Add to Cart
+        </button>
+        <button mat-raised-button color="accent">
+          <mat-icon>favorite</mat-icon> Add to Wishlist
+        </button>
+      </div>
+    </div>
+  </div>
+</div> 
