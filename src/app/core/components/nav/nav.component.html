@@ -2,7 +2,7 @@
   <mat-toolbar-row>
     <a mat-button routerLink="/">
       <mat-icon>store</mat-icon>
-      Marketplace
+      Showcase
     </a>
     
     <span class="spacer"></span>
@@ -21,7 +21,7 @@
       </a>
 
       <!-- User info and menu -->
-      <button mat-button [matMenuTrigger]="userMenu">
+      <button mat-button [matMenuTriggerFor]="userMenu">
         <mat-icon>account_circle</mat-icon>
         {{ currentUser?.firstName }} {{ currentUser?.lastName }}
         <mat-icon>arrow_drop_down</mat-icon>

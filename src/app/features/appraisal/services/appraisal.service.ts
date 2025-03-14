@@ -12,6 +12,9 @@ export interface Appraisal {
   imageUrl: string;
   images?: string[];
   timestamp?: Date;
+  height?: string;
+  width?: string;
+  weight?: string;
   appraisal: {
     details: string;
     marketResearch: string;
@@ -48,6 +51,9 @@ export class AppraisalService {
       condition: appraisalData.condition || 'Unknown',
       estimatedValue: appraisalData.estimatedValue || 'Unknown',
       imageUrl: appraisalData.imageUrl || '',
+      height: appraisalData.height || '',
+      width: appraisalData.width || '',
+      weight: appraisalData.weight || '',
       appraisal: {
         details: appraisalData.appraisal?.details || 'No details available',
         marketResearch: appraisalData.appraisal?.marketResearch || 'No market research available'
@@ -90,7 +96,7 @@ export class AppraisalService {
     return this.http.delete(`${this.apiUrl}/${id}`).toPromise();
   }
 
-  // Get all published appraisals for the marketplace
+  // Get all published appraisals for the showcase
   getPublishedAppraisals() {
     return this.http.get<Appraisal[]>(`${this.apiUrl}/published`).toPromise();
   }

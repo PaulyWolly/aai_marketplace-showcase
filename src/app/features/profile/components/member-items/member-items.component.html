@@ -69,7 +69,7 @@
             <mat-icon>edit</mat-icon>
           </button>
           <button mat-icon-button [color]="item.isPublished ? 'accent' : 'default'" (click)="togglePublished(item)" 
-            [matTooltip]="item.isPublished ? 'Unpublish from Marketplace' : 'Publish to Marketplace'">
+            [matTooltip]="item.isPublished ? 'Unpublish from Showcase' : 'Publish to Showcase'">
             <mat-icon>{{ item.isPublished ? 'visibility' : 'visibility_off' }}</mat-icon>
           </button>
           <button mat-icon-button color="warn" (click)="deleteItem(item._id!)" matTooltip="Delete Item">

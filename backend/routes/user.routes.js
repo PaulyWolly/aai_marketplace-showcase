@@ -28,7 +28,7 @@ router.get('/:id', auth, isAdmin, async (req, res) => {
   }
 });
 
-// Get basic user info by ID (for marketplace seller info - accessible to all authenticated users)
+// Get basic user info by ID (for showcase seller info - accessible to all authenticated users)
 router.get('/:id/basic', auth, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('firstName lastName email');

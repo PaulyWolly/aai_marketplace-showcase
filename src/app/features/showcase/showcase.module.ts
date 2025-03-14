@@ -13,15 +13,17 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 
 // Components
-import { MarketplaceComponent } from './components/marketplace/marketplace.component';
+import { ShowcaseComponent } from './components/showcase/showcase.component';
 import { ItemDetailComponent } from './components/item-detail/item-detail.component';
 
 const routes: Routes = [
   {
     path: '',
-    component: MarketplaceComponent
+    component: ShowcaseComponent
   },
   {
     path: 'item/:id',
@@ -31,7 +33,7 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [
-    MarketplaceComponent,
+    ShowcaseComponent,
     ItemDetailComponent
   ],
   imports: [
@@ -46,7 +48,9 @@ const routes: Routes = [
     MatInputModule,
     MatSelectModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatMenuModule,
+    MatDatepickerModule
   ]
 })
-export class MarketplaceModule { } 
+export class ShowcaseModule { } 

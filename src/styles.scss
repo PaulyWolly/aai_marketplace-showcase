@@ -150,7 +150,7 @@ app-item-management,
 app-appraisal-capture,
 app-appraisal-results,
 app-appraisal-history,
-app-marketplace,
+app-showcase,
 app-item-detail {
   display: block;
   max-width: 1200px;
@@ -164,7 +164,7 @@ app-item-detail {
   overflow: visible !important;
 }
 
-// Fix for marketplace items grid
+// Fix for showcase items grid
 .items-grid {
   height: auto !important;
   overflow: visible !important;
@@ -224,7 +224,7 @@ app-appraisal-capture {
   app-appraisal-capture,
   app-appraisal-results,
   app-appraisal-history,
-  app-marketplace,
+  app-showcase,
   app-item-detail {
     padding: 16px;
   }

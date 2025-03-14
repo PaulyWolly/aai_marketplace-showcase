@@ -72,14 +72,14 @@ export class MemberItemsComponent implements OnInit {
       
       this.snackBar.open(
         item.isPublished 
-          ? 'Item published to marketplace' 
-          : 'Item removed from marketplace', 
+          ? 'Item published to showcase' 
+          : 'Item removed from showcase', 
         'Close', 
         { duration: 3000 }
       );
     } catch (err) {
       console.error('Error toggling published status:', err);
-      this.snackBar.open('Failed to update marketplace status', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to update showcase status', 'Close', { duration: 3000 });
     }
   }
 

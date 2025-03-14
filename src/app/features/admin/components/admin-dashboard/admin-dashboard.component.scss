@@ -9,17 +9,22 @@
     
     h1 {
       margin: 0;
-      font-size: 24px;
+      font-size: 28px;
+      font-weight: 500;
     }
   }
   
   .main-navigation {
     display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
     
     .nav-button {
-      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
       
       &.active {
         background-color: #3f51b5;
@@ -33,18 +38,25 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    margin-top: 20px;
     
     .section-content {
       flex: 1;
       display: flex;
       flex-direction: column;
       overflow: auto;
+      min-height: 400px;
       
       .action-buttons {
         display: flex;
-        gap: 10px;
+        gap: 16px;
         margin-bottom: 20px;
-        flex-shrink: 0;
+        
+        button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
       }
       
       .item-management-content {
@@ -53,6 +65,10 @@
         flex-direction: column;
         overflow: auto;
         padding: 20px 0;
+        
+        .member-header {
+          margin-bottom: 20px;
+        }
       }
       
       .member-selection {
@@ -94,29 +110,37 @@
         
         .password-actions {
           display: flex;
-          flex-wrap: wrap;
           gap: 20px;
+          flex-wrap: wrap;
           margin-top: 20px;
           
           .action-card {
             flex: 1;
             min-width: 300px;
-            margin-bottom: 20px;
             
             mat-card-content {
-              min-height: 100px;
+              min-height: 120px;
             }
             
             .password-field {
               width: 100%;
-              margin-top: 10px;
+              margin-top: 16px;
             }
             
             mat-card-actions {
               display: flex;
-              justify-content: flex-end;
-              padding: 8px 16px;
               gap: 8px;
+              padding: 16px;
+              
+              button {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                
+                mat-spinner {
+                  margin-right: 8px;
+                }
+              }
             }
           }
         }

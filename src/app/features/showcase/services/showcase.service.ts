@@ -1,25 +1,26 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Appraisal } from '../../appraisal/services/appraisal.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class MarketplaceService {
+export class ShowcaseService {
   private apiUrl = `${environment.apiUrl}/appraisals`;
 
   constructor(private http: HttpClient) {}
 
-  async getMarketplaceItems() {
+  async getShowcaseItems() {
     try {
-      console.log('Fetching marketplace items from:', `${this.apiUrl}/published`);
+      console.log('Fetching showcase items from:', `${this.apiUrl}/published`);
       const items = await this.http.get<Appraisal[]>(`${this.apiUrl}/published`).toPromise();
-      console.log('Received marketplace items:', items);
+      console.log('Received showcase items:', items);
       return items;
     } catch (error) {
-      console.error('Error fetching marketplace items:', error);
-      throw error;
+      console.error('Error fetching showcase items:', error);
+      return [];
     }
   }
 
@@ -27,21 +28,27 @@ export class MarketplaceService {
     try {
       console.log('Fetching item by ID:', id, 'from URL:', `${this.apiUrl}/${id}`);
       
-      // Add a timeout to prevent hanging requests
-      const timeoutPromise = new Promise<Appraisal>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out')), 10000);
-      });
-      
-      // Race the HTTP request against the timeout
-      const item = await Promise.race([
-        this.http.get<Appraisal>(`${this.apiUrl}/${id}`).toPromise(),
-        timeoutPromise
-      ]);
+      // First try to get the item directly from the appraisals endpoint
+      const item = await this.http.get<Appraisal>(`${this.apiUrl}/${id}`).toPromise();
       
       console.log('Received item:', item);
       return item;
     } catch (error) {
       console.error('Error fetching item by ID:', id, error);
+      
+      // Try a fallback approach - check if the item exists in the published items
+      try {
+        console.log('Attempting fallback - checking published items');
+        const publishedItems = await this.getShowcaseItems();
+        const matchingItem = publishedItems?.find(item => item._id === id);
+        
+        if (matchingItem) {
+          console.log('Found item in published items:', matchingItem);
+          return matchingItem;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback approach also failed:', fallbackError);
+      }
       
       if (error instanceof HttpErrorResponse) {
         console.error('Status:', error.status, 'Message:', error.message);
@@ -82,5 +89,9 @@ export class MarketplaceService {
       userId: '',
       isPublished: false
     };
+  }
+
+  deleteItem(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
   }
 } 

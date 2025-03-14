@@ -18,6 +18,10 @@ try {
     condition: { type: String, default: 'Unknown' },
     estimatedValue: { type: String, default: 'Unknown' },
     imageUrl: { type: String, required: true },
+    images: { type: [String], default: [] },
+    height: { type: String },
+    width: { type: String },
+    weight: { type: String },
     appraisal: {
       details: { type: String, required: true },
       marketResearch: { type: String, required: true }
@@ -211,8 +215,8 @@ router.get('/all', auth, isAdmin, async (req, res) => {
   }
 });
 
-// Get all published appraisals for the marketplace
-router.get('/published', async (req, res) => {
+// Get all published appraisals for the showcase
+router.get('/published', auth, async (req, res) => {
   try {
     console.log('Fetching published appraisals');
     const appraisals = await AppraisalSchema.find({ isPublished: true });

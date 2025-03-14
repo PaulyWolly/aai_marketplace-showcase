@@ -95,4 +95,15 @@
     justify-content: center;
     padding: 24px;
   }
+}
+
+.dimensions-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  
+  .dimension-field {
+    flex: 1;
+    min-width: 120px;
+  }
 } 

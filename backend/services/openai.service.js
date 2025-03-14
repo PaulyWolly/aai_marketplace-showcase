@@ -88,8 +88,8 @@ class OpenAIService {
 - **Factors affecting depreciation:** Gaming headsets typically depreciate 30-50% in the first year after release, with factors like brand reputation, build quality, and feature set affecting the depreciation rate.
 - **Long-term value prediction:** This style of headset will likely continue to depreciate gradually, retaining approximately 20-30% of its original value after 3-4 years if maintained in good condition.
 
-## Marketplace Insights
-- **Best platforms for buying/selling:** For used gaming peripherals, platforms like eBay, r/hardwareswap on Reddit, and Facebook Marketplace offer the best combination of audience reach and reasonable fees.
+## Showcase Insights
+- **Best platforms for buying/selling:** For used gaming peripherals, platforms like eBay, r/hardwareswap on Reddit, and Facebook Showcase offer the best combination of audience reach and reasonable fees.
 - **Regional price variations:** North American and European markets typically command higher prices for gaming peripherals compared to Asian markets where similar products might be available at lower price points.
 
 ## Comparable Alternatives
@@ -213,7 +213,7 @@ class OpenAIService {
 - Price differences by region
 - Availability considerations
 
-## Marketplace Recommendations
+## Showcase Recommendations
 - Best platforms for buying/selling
 - Tips for maximizing value
 

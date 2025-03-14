@@ -1,15 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { MarketplaceService } from '../../services/marketplace.service';
+import { ShowcaseService } from '../../services/showcase.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { Appraisal } from '../../../appraisal/services/appraisal.service';
 
 @Component({
-  selector: 'app-marketplace',
-  templateUrl: './marketplace.component.html',
-  styleUrls: ['./marketplace.component.scss']
+  selector: 'app-showcase',
+  templateUrl: './showcase.component.html',
+  styleUrls: ['./showcase.component.scss']
 })
-export class MarketplaceComponent implements OnInit {
+export class ShowcaseComponent implements OnInit {
   items: Appraisal[] = [];
   filteredItems: Appraisal[] = [];
   loading = false;
@@ -21,7 +21,7 @@ export class MarketplaceComponent implements OnInit {
   categories: string[];
 
   constructor(
-    private marketplaceService: MarketplaceService,
+    private showcaseService: ShowcaseService,
     private categoriesService: CategoriesService,
     private router: Router
   ) {
@@ -37,7 +37,7 @@ export class MarketplaceComponent implements OnInit {
       this.loading = true;
       this.error = null;
       
-      const items = await this.marketplaceService.getMarketplaceItems();
+      const items = await this.showcaseService.getShowcaseItems();
       if (items) {
         this.items = items;
         this.applyFilters();
@@ -46,8 +46,8 @@ export class MarketplaceComponent implements OnInit {
         this.filteredItems = [];
       }
     } catch (err) {
-      console.error('Error loading marketplace items:', err);
-      this.error = 'Failed to load marketplace items';
+      console.error('Error loading showcase items:', err);
+      this.error = 'Failed to load showcase items';
     } finally {
       this.loading = false;
     }
@@ -121,7 +121,7 @@ export class MarketplaceComponent implements OnInit {
   
   viewItemDetails(item: Appraisal): void {
     if (item._id) {
-      this.router.navigate(['/marketplace/item', item._id]);
+      this.router.navigate(['/showcase/item', item._id]);
     }
   }
 } 

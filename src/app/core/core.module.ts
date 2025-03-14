@@ -29,7 +29,11 @@ import { AuthInterceptor } from './interceptors/auth.interceptor';
     MatMenuModule
   ],
   exports: [
-    NavComponent
+    NavComponent,
+    MatMenuModule,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule
   ],
   providers: [
     {

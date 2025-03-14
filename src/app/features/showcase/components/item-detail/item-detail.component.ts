@@ -1,10 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MarketplaceService } from '../../services/marketplace.service';
-import { Appraisal } from '../../../appraisal/services/appraisal.service';
+import { ShowcaseService } from '../../services/showcase.service';
+import { Appraisal, AppraisalService } from '../../../appraisal/services/appraisal.service';
 import { AuthService, User } from '../../../../core/services/auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { finalize } from 'rxjs/operators';
 
 // Import marked directly - this approach works better with different versions
 declare const marked: any;
@@ -16,7 +19,7 @@ declare const marked: any;
   marked: (text: string) => text
 };
 
-interface ItemWithOwner extends Appraisal {
+interface ItemWithMember extends Appraisal {
   owner?: {
     name: string;
     email: string;
@@ -30,30 +33,37 @@ interface ItemWithOwner extends Appraisal {
   styleUrls: ['./item-detail.component.scss']
 })
 export class ItemDetailComponent implements OnInit {
-  item: ItemWithOwner | null = null;
+  item: ItemWithMember | null = null;
   loading = false;
   error: string | null = null;
   currentImageIndex = 0;
   allImages: string[] = [];
-  ownerLoading = false;
+  memberLoading = false;
   renderedDetails: SafeHtml | null = null;
   renderedMarketResearch: SafeHtml | null = null;
+  isAdmin = false;
+  isDeleting = false;
   
-  get isAdmin(): boolean {
-    return this.authService.isAdmin();
-  }
-
   constructor(
     public route: ActivatedRoute,
     private router: Router,
-    private marketplaceService: MarketplaceService,
+    private showcaseService: ShowcaseService,
+    private appraisalService: AppraisalService,
     private authService: AuthService,
     private snackBar: MatSnackBar,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private dialog: MatDialog
   ) { }
 
   ngOnInit(): void {
     this.loadItem();
+    this.checkAdminStatus();
+  }
+
+  private checkAdminStatus(): void {
+    this.authService.isAdmin$.subscribe(isAdmin => {
+      this.isAdmin = isAdmin;
+    });
   }
 
   async loadItem(): Promise<void> {
@@ -69,7 +79,17 @@ export class ItemDetailComponent implements OnInit {
       this.loading = true;
       this.error = null;
       
-      const item = await this.marketplaceService.getItemById(id);
+      // Add a timeout to prevent hanging requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000);
+      });
+      
+      // Race the item loading against the timeout
+      const item = await Promise.race([
+        this.showcaseService.getItemById(id),
+        timeoutPromise
+      ]);
+      
       console.log('Item loaded:', item);
       
       if (item) {
@@ -92,9 +112,9 @@ export class ItemDetailComponent implements OnInit {
         this.setupImageGallery();
         this.renderMarkdown();
         
-        // Load the owner's information
+        // Load the member's information
         if (item.userId) {
-          this.loadOwnerInfo(item.userId);
+          this.loadMemberInfo(item.userId);
         }
       } else {
         this.error = 'Item not found';
@@ -102,14 +122,18 @@ export class ItemDetailComponent implements OnInit {
       }
     } catch (err) {
       console.error('Error loading item details:', err);
-      this.error = 'Failed to load item details';
+      if (err instanceof Error) {
+        this.error = err.message || 'Failed to load item details';
+      } else {
+        this.error = 'Failed to load item details';
+      }
     } finally {
       this.loading = false;
     }
   }
   
-  loadOwnerInfo(userId: string): void {
-    this.ownerLoading = true;
+  loadMemberInfo(userId: string): void {
+    this.memberLoading = true;
     
     this.authService.getBasicUserInfo(userId).subscribe({
       next: (user) => {
@@ -118,28 +142,28 @@ export class ItemDetailComponent implements OnInit {
             name: `${user.firstName} ${user.lastName}`,
             email: user.email
           };
-          console.log('Owner info loaded:', this.item.owner);
+          console.log('Member info loaded:', this.item.owner);
         } else {
-          console.warn('Failed to load owner info - user data missing');
+          console.warn('Failed to load member info - user data missing');
         }
-        this.ownerLoading = false;
+        this.memberLoading = false;
       },
       error: (err) => {
-        console.error('Error loading owner info:', err);
-        this.ownerLoading = false;
+        console.error('Error loading member info:', err);
+        this.memberLoading = false;
       }
     });
   }
 
-  contactOwner(): void {
+  contactMember(): void {
     if (!this.item?.owner?.email) {
-      this.snackBar.open('Owner contact information is not available', 'Close', { duration: 3000 });
+      this.snackBar.open('Member contact information is not available', 'Close', { duration: 3000 });
       return;
     }
     
     // Create a mailto link
     const subject = encodeURIComponent(`Inquiry about ${this.item.name}`);
-    const body = encodeURIComponent(`Hello,\n\nI'm interested in your item "${this.item.name}" that I saw on the marketplace.\n\nCould you please provide more information?\n\nThank you.`);
+    const body = encodeURIComponent(`Hello,\n\nI'm interested in your item "${this.item.name}" that I saw on the showcase.\n\nCould you please provide more information?\n\nThank you.`);
     const mailtoLink = `mailto:${this.item.owner.email}?subject=${subject}&body=${body}`;
     
     // Open the user's email client
@@ -163,10 +187,19 @@ export class ItemDetailComponent implements OnInit {
         this.allImages.push(this.item.imageUrl);
       }
       
-      // Add additional images if available
+      // Add additional images if available, but avoid duplicates
       if (this.item.images && Array.isArray(this.item.images)) {
-        console.log('Adding additional images:', this.item.images);
-        this.allImages = [...this.allImages, ...this.item.images];
+        console.log('Processing additional images:', this.item.images);
+        
+        // Filter out duplicates and null/undefined values
+        const additionalImages = this.item.images.filter(img => 
+          img && // Filter out null/undefined
+          img !== this.item?.imageUrl && // Filter out main image
+          !this.allImages.includes(img) // Filter out any duplicates already in allImages
+        );
+        
+        console.log('Filtered additional images:', additionalImages);
+        this.allImages = [...this.allImages, ...additionalImages];
       }
       
       // Reset the current image index
@@ -205,7 +238,7 @@ export class ItemDetailComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/marketplace']);
+    this.router.navigate(['/showcase']);
   }
 
   renderMarkdown(): void {
@@ -304,5 +337,127 @@ export class ItemDetailComponent implements OnInit {
     const imgElement = event.target as HTMLImageElement;
     // Use a simple data URL for a placeholder image (gray square with text)
     imgElement.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22200%22%20height%3D%22200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23CCCCCC%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20alignment-baseline%3D%22middle%22%20fill%3D%22%23333333%22%3EImage%20Not%20Available%3C%2Ftext%3E%3C%2Fsvg%3E';
+  }
+
+  deleteImage(index: number): void {
+    if (index < 0 || index >= this.allImages.length || !this.item) {
+      return;
+    }
+    
+    const imageToRemove = this.allImages[index];
+    
+    // Open confirmation dialog
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '350px',
+      data: {
+        title: 'Delete Image',
+        message: 'Are you sure you want to delete this image? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && this.item) {
+        // Remove the image from the allImages array
+        this.allImages.splice(index, 1);
+        
+        // If we're deleting the current image, adjust the current index
+        if (index === this.currentImageIndex) {
+          // If it's the last image, go to the previous one
+          if (index === this.allImages.length) {
+            this.currentImageIndex = Math.max(0, this.allImages.length - 1);
+          }
+          // Otherwise stay at the same index (which now shows the next image)
+        } 
+        // If we're deleting an image before the current one, adjust the current index
+        else if (index < this.currentImageIndex) {
+          this.currentImageIndex = Math.max(0, this.currentImageIndex - 1);
+        }
+        
+        // If the image we're removing is the main image, update the item's imageUrl
+        if (this.item.imageUrl === imageToRemove) {
+          // Set the first available image as the main image, or empty string if none left
+          this.item.imageUrl = this.allImages.length > 0 ? this.allImages[0] : '';
+        }
+        
+        // Also remove from the item's images array if it exists there
+        if (this.item.images && Array.isArray(this.item.images)) {
+          const imgIndex = this.item.images.indexOf(imageToRemove);
+          if (imgIndex !== -1) {
+            this.item.images.splice(imgIndex, 1);
+          }
+        }
+        
+        // Save the updated item to the server
+        this.saveItemChanges();
+      }
+    });
+  }
+
+  // New method to save item changes to the server
+  private saveItemChanges(): void {
+    if (!this.item || !this.item._id) {
+      this.snackBar.open('Failed to save changes: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Show loading indicator
+    const loadingSnackBarRef = this.snackBar.open('Saving changes...', '', { duration: 0 });
+    
+    // Create a copy of the item with the updated images
+    const updatedItem = {
+      ...this.item,
+      imageUrl: this.item.imageUrl,
+      images: this.allImages.filter(img => img !== this.item?.imageUrl)
+    };
+    
+    // Save to server using the AppraisalService
+    this.appraisalService.saveAppraisal(updatedItem)
+      .then(() => {
+        loadingSnackBarRef.dismiss();
+        this.snackBar.open('Image removed successfully', 'Close', { duration: 3000 });
+      })
+      .catch((error: Error) => {
+        loadingSnackBarRef.dismiss();
+        console.error('Error saving item changes:', error);
+        this.snackBar.open('Failed to save changes. The image will reappear on refresh.', 'Close', { duration: 5000 });
+      });
+  }
+
+  deleteItem(): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '350px',
+      data: {
+        title: 'Delete Item',
+        message: 'Are you sure you want to delete this item? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && this.item && this.item._id) {
+        this.isDeleting = true;
+        this.showcaseService.deleteItem(this.item._id)
+          .pipe(
+            finalize(() => this.isDeleting = false)
+          )
+          .subscribe({
+            next: () => {
+              this.snackBar.open('Item deleted successfully', 'Close', {
+                duration: 3000
+              });
+              this.router.navigate(['/showcase']);
+            },
+            error: (error) => {
+              console.error('Error deleting item:', error);
+              this.snackBar.open('Failed to delete item. Please try again.', 'Close', {
+                duration: 3000
+              });
+            }
+          });
+      }
+    });
   }
 } 

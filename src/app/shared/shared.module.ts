@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Nl2brPipe } from './pipes/nl2br.pipe';
 import { MarkdownPipe } from './pipes/markdown.pipe';
 import { MarkdownModule } from 'ngx-markdown';
+import { RouterModule } from '@angular/router';
 
 // Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -24,6 +25,7 @@ import { WebcamModule } from 'ngx-webcam';
 import { ImageCaptureDialogComponent } from './components/image-capture-dialog/image-capture-dialog.component';
 import { ConfirmDialogComponent } from './components/confirm-dialog/confirm-dialog.component';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 
 @NgModule({
   declarations: [
@@ -36,6 +38,7 @@ import { MatDialogModule } from '@angular/material/dialog';
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
+    RouterModule,
     MatButtonModule,
     MatCardModule,
     MatIconModule,
@@ -54,12 +57,14 @@ import { MatDialogModule } from '@angular/material/dialog';
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
-    MarkdownModule.forChild()
+    MarkdownModule.forChild(),
+    MatSnackBarModule
   ],
   exports: [
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
+    RouterModule,
     MatButtonModule,
     MatCardModule,
     MatIconModule,
@@ -79,7 +84,8 @@ import { MatDialogModule } from '@angular/material/dialog';
     ConfirmDialogComponent,
     Nl2brPipe,
     MarkdownPipe,
-    MarkdownModule
+    MarkdownModule,
+    MatSnackBarModule
   ]
 })
 export class SharedModule { }
