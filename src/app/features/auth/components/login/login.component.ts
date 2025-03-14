@@ -88,8 +88,8 @@ export class LoginComponent implements OnInit {
       console.log('User is admin, redirecting to admin dashboard');
       this.router.navigate(['/admin']);
     } else {
-      console.log('User is not admin, redirecting to marketplace');
-      this.router.navigate(['/marketplace']);
+      console.log('User is not admin, redirecting to showcase');
+      this.router.navigate(['/showcase']);
     }
   }
 }

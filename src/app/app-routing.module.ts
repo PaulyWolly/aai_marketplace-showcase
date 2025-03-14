@@ -6,7 +6,7 @@ import { AuthGuard } from './core/guards/auth.guard';
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'auth/login',
+    redirectTo: 'showcase',
     pathMatch: 'full'
   },
   {
@@ -15,13 +15,12 @@ const routes: Routes = [
   },
   {
     path: 'items',
-    redirectTo: 'marketplace',
+    redirectTo: 'showcase',
     pathMatch: 'full'
   },
   {
-    path: 'marketplace',
-    loadChildren: () => import('./features/marketplace/marketplace.module').then(m => m.MarketplaceModule),
-    canActivate: [AuthGuard]
+    path: 'showcase',
+    loadChildren: () => import('./features/showcase/showcase.module').then(m => m.ShowcaseModule),
   },
   {
     path: 'admin',
@@ -40,7 +39,7 @@ const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'auth/login'
+    redirectTo: 'showcase'
   }
 ];
 

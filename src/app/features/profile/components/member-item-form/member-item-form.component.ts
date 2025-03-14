@@ -50,6 +50,9 @@ export class MemberItemFormComponent implements OnInit {
       category: ['', [Validators.required]],
       condition: ['', [Validators.required]],
       estimatedValue: ['', [Validators.required]],
+      height: [''],
+      width: [''],
+      weight: [''],
       imageUrl: [''],
       images: this.fb.array([]),
       appraisal: this.fb.group({

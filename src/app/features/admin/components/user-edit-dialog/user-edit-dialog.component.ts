@@ -17,13 +17,13 @@ export class UserEditDialogComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<UserEditDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { user: User }
+    @Inject(MAT_DIALOG_DATA) public data: User
   ) {
     this.userForm = this.fb.group({
-      firstName: [data.user.firstName, [Validators.required]],
-      lastName: [data.user.lastName, [Validators.required]],
-      email: [data.user.email, [Validators.required, Validators.email]],
-      role: [data.user.role, [Validators.required]]
+      firstName: [data.firstName, [Validators.required]],
+      lastName: [data.lastName, [Validators.required]],
+      email: [data.email, [Validators.required, Validators.email]],
+      role: [data.role, [Validators.required]]
     });
   }
 
@@ -36,7 +36,7 @@ export class UserEditDialogComponent implements OnInit {
     }
 
     const updatedUser = {
-      ...this.data.user,
+      ...this.data,
       ...this.userForm.value
     };
 

@@ -1,10 +1,22 @@
 <div class="item-detail-container">
   <button mat-button class="back-button" (click)="goBack()">
-    <mat-icon>arrow_back</mat-icon> Back to Marketplace
+    <mat-icon>arrow_back</mat-icon> Back to Showcase
   </button>
 
   <div *ngIf="error" class="error-message">
-    <mat-error>{{error}}</mat-error>
+    <mat-card>
+      <mat-card-header>
+        <mat-icon mat-card-avatar color="warn">error</mat-icon>
+        <mat-card-title>Error Loading Item</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>{{error}}</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-raised-button color="primary" (click)="loadItem()">Retry</button>
+        <button mat-raised-button routerLink="/showcase">Back to Showcase</button>
+      </mat-card-actions>
+    </mat-card>
   </div>
 
   <div *ngIf="loading" class="loading-container">
@@ -18,34 +30,42 @@
     <p>Error: {{error || 'No error message'}}</p>
     <button mat-raised-button color="primary" (click)="loadItem()">Retry Loading</button>
     <p>
-      <a [routerLink]="['/marketplace']">Return to Marketplace</a>
+      <a [routerLink]="['/showcase']">Return to Showcase</a>
     </p>
   </div>
 
   <div *ngIf="!loading && item" class="item-content">
     <div class="item-image-section">
+      <!-- Main Image with Navigation Arrows -->
       <div class="main-image-container">
         <button *ngIf="allImages.length > 1" mat-icon-button class="nav-button prev-button" (click)="previousImage()">
           <mat-icon>chevron_left</mat-icon>
         </button>
         
         <img [src]="currentImage" [alt]="item.name" class="main-image" 
-             (error)="handleImageError($event)" 
-             onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22200%22%20height%3D%22200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23CCCCCC%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20font-size%3D%2220%22%20text-anchor%3D%22middle%22%20alignment-baseline%3D%22middle%22%20fill%3D%22%23333333%22%3EImage%20Not%20Available%3C%2Ftext%3E%3C%2Fsvg%3E'">
+             (error)="handleImageError($event)">
         
         <button *ngIf="allImages.length > 1" mat-icon-button class="nav-button next-button" (click)="nextImage()">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
       
+      <!-- Thumbnails Row -->
       <div *ngIf="allImages.length > 1" class="thumbnails-container">
         <div 
           *ngFor="let image of allImages; let i = index" 
           class="thumbnail" 
           [class.active]="i === currentImageIndex"
           (click)="selectImage(i)"
+          [attr.title]="'View image ' + (i+1)"
         >
           <img [src]="image" [alt]="'Thumbnail ' + (i+1)">
+          <button *ngIf="isAdmin" mat-icon-button color="warn" class="delete-image-btn" 
+                  (click)="$event.stopPropagation(); deleteImage(i)" 
+                  [title]="'Delete image ' + (i+1)"
+                  [attr.aria-label]="'Delete image ' + (i+1)">
+            <mat-icon>delete</mat-icon>
+          </button>
         </div>
       </div>
     </div>
@@ -78,30 +98,33 @@
           <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)">
             <mat-icon>edit</mat-icon> Edit Item
           </button>
+          <button mat-raised-button color="warn" (click)="deleteItem()" class="delete-button">
+            <mat-icon>delete</mat-icon> Delete Item
+          </button>
         </mat-card-actions>
       </mat-card>
       
-      <!-- Owner Information -->
-      <mat-card class="owner-card">
+      <!-- Member Information -->
+      <mat-card class="member-card">
         <mat-card-header>
           <mat-icon mat-card-avatar>person</mat-icon>
-          <mat-card-title>Seller Information</mat-card-title>
+          <mat-card-title>Member Information</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <div *ngIf="ownerLoading" class="owner-loading">
+          <div *ngIf="memberLoading" class="member-loading">
             <mat-spinner diameter="20"></mat-spinner>
-            <span>Loading seller information...</span>
+            <span>Loading member information...</span>
           </div>
-          <div *ngIf="!ownerLoading && item.owner" class="owner-info">
-            <p><strong>Seller:</strong> {{item.owner.name}}</p>
+          <div *ngIf="!memberLoading && item.owner" class="member-info">
+            <p><strong>Member:</strong> {{item.owner.name}}</p>
           </div>
-          <div *ngIf="!ownerLoading && !item.owner" class="owner-info-error">
-            <p>Seller information not available</p>
+          <div *ngIf="!memberLoading && !item.owner" class="member-info-error">
+            <p>Member information not available</p>
           </div>
         </mat-card-content>
         <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="contactOwner()" [disabled]="!item.owner">
-            <mat-icon>email</mat-icon> Contact Seller
+          <button mat-raised-button color="primary" (click)="contactMember()" [disabled]="!item.owner">
+            <mat-icon>email</mat-icon> Contact Member
           </button>
         </mat-card-actions>
       </mat-card>
@@ -111,6 +134,41 @@
           <mat-card-title>Item Details</mat-card-title>
         </mat-card-header>
         <mat-card-content>
+          <div class="item-details two-column-layout">
+            <div class="left-column">
+              <div class="detail-section">
+                <span class="label">Category:</span>
+                <span class="value">{{item.category}}</span>
+              </div>
+              
+              <div class="detail-section">
+                <span class="label">Condition:</span>
+                <span class="value">{{item.condition}}</span>
+              </div>
+              
+              <div class="detail-section">
+                <span class="label">Estimated Value:</span>
+                <span class="value">{{item.estimatedValue}}</span>
+              </div>
+            </div>
+            
+            <div class="right-column">
+              <div class="detail-section" *ngIf="item.height">
+                <span class="label">Height:</span>
+                <span class="value">{{item.height}}</span>
+              </div>
+              
+              <div class="detail-section" *ngIf="item.width">
+                <span class="label">Width:</span>
+                <span class="value">{{item.width}}</span>
+              </div>
+              
+              <div class="detail-section" *ngIf="item.weight">
+                <span class="label">Weight:</span>
+                <span class="value">{{item.weight}}</span>
+              </div>
+            </div>
+          </div>
           <div *ngIf="renderedDetails" class="markdown-content" [innerHTML]="renderedDetails"></div>
           <div *ngIf="!renderedDetails" class="fallback-content">
             <p>No details available for this item.</p>

@@ -62,6 +62,26 @@
           </mat-form-field>
         </div>
 
+        <div class="form-row dimensions-container">
+          <mat-form-field appearance="outline" class="dimension-field">
+            <mat-label>Height</mat-label>
+            <input matInput formControlName="height" placeholder="e.g., 10 inches">
+            <mat-hint>Include units (inches, cm, etc.)</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="dimension-field">
+            <mat-label>Width</mat-label>
+            <input matInput formControlName="width" placeholder="e.g., 15 inches">
+            <mat-hint>Include units (inches, cm, etc.)</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="dimension-field">
+            <mat-label>Weight</mat-label>
+            <input matInput formControlName="weight" placeholder="e.g., 5 lbs">
+            <mat-hint>Include units (lbs, kg, etc.)</mat-hint>
+          </mat-form-field>
+        </div>
+
         <div class="form-row">
           <mat-form-field appearance="outline">
             <mat-label>Image URL</mat-label>
@@ -69,7 +89,39 @@
           </mat-form-field>
         </div>
 
+        <div class="form-row image-actions">
+          <h3>Item Images</h3>
+          <div class="image-upload-buttons">
+            <button mat-raised-button type="button" color="primary" (click)="openCameraCapture()">
+              <mat-icon>photo_camera</mat-icon>
+              Capture Image
+            </button>
+            <button mat-raised-button type="button" color="accent" (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon>
+              Upload Image
+            </button>
+            <input hidden type="file" #fileInput accept="image/*" (change)="onFileSelected($event)">
+          </div>
+        </div>
+
+        <div class="form-row image-gallery" *ngIf="images.length > 0">
+          <div class="image-container" *ngFor="let imageControl of images.controls; let i = index">
+            <img [src]="imageControl.value" alt="Item image">
+            <div class="image-actions">
+              <button mat-icon-button color="warn" type="button" (click)="removeImage(i)" matTooltip="Remove Image">
+                <mat-icon>delete</mat-icon>
+              </button>
+              <button mat-icon-button color="primary" type="button" (click)="setMainImage(i)" 
+                      [disabled]="itemForm.get('imageUrl')?.value === imageControl.value"
+                      matTooltip="Set as Main Image">
+                <mat-icon>star</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="form-row image-preview" *ngIf="itemForm.get('imageUrl')?.value">
+          <h3>Main Image Preview</h3>
           <img [src]="itemForm.get('imageUrl')?.value" alt="Item preview">
         </div>
 
@@ -95,10 +147,18 @@
           </div>
         </div>
 
+        <div class="form-row">
+          <mat-checkbox formControlName="isPublished" color="primary">
+            Publish to Showcase
+          </mat-checkbox>
+          <mat-hint>When checked, this item will be visible in the public showcase</mat-hint>
+        </div>
+
         <div class="form-actions">
           <button mat-button type="button" (click)="onCancel()">Cancel</button>
           <button mat-raised-button color="primary" type="submit" [disabled]="itemForm.invalid || loading">
-            {{isEditMode ? 'Update Item' : 'Create Item'}}
+            <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+            <span *ngIf="!loading">{{isEditMode ? 'Update Item' : 'Create Item'}}</span>
           </button>
         </div>
       </form>

@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.yourdomain.com/api' // Replace with your production API URL
+  apiUrl: '/api' // Using a relative URL to avoid CORS issues
 }; 

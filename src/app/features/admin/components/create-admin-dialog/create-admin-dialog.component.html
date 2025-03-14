@@ -1,12 +1,11 @@
 <h2 mat-dialog-title>Create Admin User</h2>
 
 <mat-dialog-content>
-  <form [formGroup]="adminForm" (ngSubmit)="onSubmit()">
-    <div *ngIf="error" class="error-message">
-      <mat-icon>error</mat-icon>
-      <span>{{ error }}</span>
-    </div>
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
 
+  <form [formGroup]="adminForm" (ngSubmit)="onSubmit()">
     <div class="form-row">
       <mat-form-field appearance="outline">
         <mat-label>First Name</mat-label>
@@ -30,7 +29,7 @@
     <div class="form-row">
       <mat-form-field appearance="outline">
         <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" required>
+        <input matInput formControlName="email" required type="email">
         <mat-error *ngIf="adminForm.get('email')?.hasError('required')">
           Email is required
         </mat-error>
@@ -43,7 +42,7 @@
     <div class="form-row password-row">
       <mat-form-field appearance="outline">
         <mat-label>Password</mat-label>
-        <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" required>
+        <input matInput formControlName="password" required [type]="hidePassword ? 'password' : 'text'">
         <button mat-icon-button matSuffix (click)="hidePassword = !hidePassword" type="button">
           <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
         </button>
@@ -62,9 +61,9 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button (click)="onCancel()">Cancel</button>
-  <button mat-raised-button color="primary" [disabled]="adminForm.invalid || loading" (click)="onSubmit()">
-    <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+  <button mat-button (click)="onCancel()" [disabled]="loading">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="adminForm.invalid || loading">
+    <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
     <span *ngIf="!loading">Create Admin</span>
   </button>
 </mat-dialog-actions>

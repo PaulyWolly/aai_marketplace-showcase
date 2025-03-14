@@ -10,6 +10,15 @@ mat-card .mat-mdc-card {
   top: 100px;
 }
 
+.mat-mdc-icon-button span.mat-mdc-button-touch-target {
+  position: absolute;
+  top: 50%;
+  height: 24px !important;
+  left: 50%;
+  width: 24px !important;
+  transform: translate(-50%, -50%)
+}
+
 .mat-mdc-card.mdc-card.item-detail-card.ng-star-inserted {
   margin-top: 50px;
   position: relative;

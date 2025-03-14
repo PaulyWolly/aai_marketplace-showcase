@@ -5,12 +5,12 @@
     <mat-sidenav #sidenav mode="side" [class.expanded]="isMenuExpanded" [class.collapsed]="!isMenuExpanded" 
                  [opened]="authService.isAuthenticated$ | async" fixedInViewport="false">
       <mat-nav-list>
-        <a mat-list-item routerLink="/marketplace" routerLinkActive="active"
-           [matTooltip]="!isMenuExpanded ? 'Marketplace' : ''" 
-           matTooltipPosition="right"
-           matTooltipTouchGestures="on">
-          <mat-icon>shopping_basket</mat-icon>
-          <span *ngIf="isMenuExpanded">Marketplace</span>
+        <a mat-list-item routerLink="/showcase" routerLinkActive="active"
+           [matTooltip]="!isMenuExpanded ? 'Showcase' : ''"
+           [matTooltipPosition]="'right'"
+           [matTooltipDisabled]="isMenuExpanded">
+          <mat-icon mat-list-icon>store</mat-icon>
+          <span *ngIf="isMenuExpanded">Showcase</span>
         </a>
         <a mat-list-item routerLink="/profile" routerLinkActive="active"
            [matTooltip]="!isMenuExpanded ? 'Profile' : ''" 

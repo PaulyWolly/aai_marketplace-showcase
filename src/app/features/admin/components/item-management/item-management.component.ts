@@ -4,9 +4,11 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { ItemService } from '../../../../core/services/item.service';
 import { AppraisalService, Appraisal } from '../../../appraisal/services/appraisal.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 // Extended interface to include user information
 interface AppraisalWithUser extends Appraisal {
@@ -38,7 +40,8 @@ export class ItemManagementComponent implements OnInit {
     private appraisalService: AppraisalService,
     private itemService: ItemService,
     private authService: AuthService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {}
 
   async ngOnInit() {
@@ -197,26 +200,40 @@ export class ItemManagementComponent implements OnInit {
   editItem(id: string) {
     // If we're viewing a specific user's items, include a return URL
     if (this.userId) {
-      const returnUrl = `/admin/items?userId=${this.userId}`;
+      const returnUrl = `/admin?selectedSection=items&userId=${this.userId}`;
       this.router.navigate(['/admin/items/edit', id], { 
         queryParams: { returnUrl: encodeURIComponent(returnUrl) }
       });
     } else {
-      this.router.navigate(['/admin/items/edit', id]);
+      this.router.navigate(['/admin/items/edit', id], {
+        queryParams: { returnUrl: encodeURIComponent('/admin?selectedSection=items') }
+      });
     }
   }
 
   async deleteItem(id: string) {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '350px',
+      data: {
+        title: 'Delete Item',
+        message: 'Are you sure you want to delete this item? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel'
+      }
+    });
 
-    try {
-      await this.appraisalService.deleteAppraisal(id);
-      this.snackBar.open('Item deleted successfully', 'Close', { duration: 3000 });
-      await this.loadItems();
-    } catch (err) {
-      console.error('Error deleting item:', err);
-      this.snackBar.open('Failed to delete item', 'Close', { duration: 3000 });
-    }
+    dialogRef.afterClosed().subscribe(async result => {
+      if (result) {
+        try {
+          await this.appraisalService.deleteAppraisal(id);
+          this.snackBar.open('Item deleted successfully', 'Close', { duration: 3000 });
+          await this.loadItems();
+        } catch (err) {
+          console.error('Error deleting item:', err);
+          this.snackBar.open('Failed to delete item', 'Close', { duration: 3000 });
+        }
+      }
+    });
   }
 
   addNewItem() {
@@ -228,6 +245,6 @@ export class ItemManagementComponent implements OnInit {
   }
   
   viewItemDetails(id: string) {
-    this.router.navigate(['/marketplace/item', id]);
+    this.router.navigate(['/showcase/item', id]);
   }
 }

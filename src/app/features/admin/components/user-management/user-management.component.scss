@@ -1,66 +1,50 @@
 .user-management-container {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  padding: 20px;
   
   .header {
-    margin-bottom: 20px;
-    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 20px;
     
     h1 {
       margin: 0;
-      font-weight: 500;
-    }
-    
-    .header-actions {
-      flex-shrink: 0;
+      font-size: 24px;
     }
   }
-
+  
   .filter-card {
     margin-bottom: 20px;
-    flex-shrink: 0;
     
     mat-form-field {
       width: 100%;
     }
   }
-
+  
   .error-message {
     margin-bottom: 20px;
-    flex-shrink: 0;
   }
-
+  
   .table-container {
     position: relative;
-    flex: 1;
+    min-height: 200px;
     overflow: auto;
-    min-height: 300px;
     
     .loading-overlay {
       position: absolute;
       top: 0;
       left: 0;
-      bottom: 0;
       right: 0;
+      bottom: 0;
       background: rgba(255, 255, 255, 0.7);
-      z-index: 1;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
+      z-index: 10;
     }
     
     table {
       width: 100%;
-    }
-    
-    .mat-column-actions {
-      width: 150px;
-      text-align: center;
     }
     
     .role-badge {
@@ -68,32 +52,32 @@
       border-radius: 4px;
       font-size: 12px;
       text-transform: uppercase;
-      font-weight: 500;
       
       &.admin-badge {
-        background-color: #7b1fa2;
+        background-color: #673ab7;
         color: white;
       }
       
       &.user-badge {
-        background-color: #1976d2;
+        background-color: #2196f3;
         color: white;
       }
     }
     
-    mat-paginator {
-      flex-shrink: 0;
+    .item-count {
+      &.highlight {
+        font-weight: bold;
+        color: #4caf50;
+      }
     }
-  }
-}
-
-.item-count {
-  &.highlight {
-    font-weight: 500;
-    color: #3f51b5;
-    background-color: rgba(63, 81, 181, 0.1);
-    padding: 4px 8px;
-    border-radius: 16px;
-    display: inline-block;
+    
+    .mat-column-actions {
+      width: 200px;
+      text-align: right;
+      
+      button {
+        margin-left: 4px;
+      }
+    }
   }
 }

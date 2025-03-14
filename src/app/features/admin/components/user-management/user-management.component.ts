@@ -276,12 +276,13 @@ export class UserManagementComponent implements OnInit {
 
   createAdminUser(): void {
     const dialogRef = this.dialog.open(CreateAdminDialogComponent, {
-      width: '500px'
+      width: '500px',
+      disableClose: true
     });
-
+    
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        // Refresh the user list
+        this.snackBar.open('Admin user created successfully', 'Close', { duration: 3000 });
         this.loadUsers();
       }
     });
