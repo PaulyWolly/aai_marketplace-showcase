@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login Test Page</h1>
+    <p>This page tests the login API directly without Angular.</p>
+    
+    <div class="form-group">
+        <label for="email">Email:</label>
+        <input type="email" id="email" value="pwelby@gmail.com">
+    </div>
+    
+    <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" value="PJW_1236">
+    </div>
+    
+    <div class="form-group">
+        <button id="loginBtn">Login</button>
+        <button id="testLoginBtn">Test Login</button>
+    </div>
+    
+    <div id="result">
+        <p>Results will appear here...</p>
+    </div>
+    
+    <script>
+        document.getElementById('loginBtn').addEventListener('click', function() {
+            login('/api/auth/login');
+        });
+        
+        document.getElementById('testLoginBtn').addEventListener('click', function() {
+            login('/api/auth/test-login');
+        });
+        
+        function login(endpoint) {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            resultDiv.innerHTML = '<p>Sending request...</p>';
+            resultDiv.className = '';
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    return response.json().then(data => {
+                        return {
+                            status: response.status,
+                            ok: response.ok,
+                            data: data
+                        };
+                    });
+                } else {
+                    return response.text().then(text => {
+                        return {
+                            status: response.status,
+                            ok: response.ok,
+                            data: text
+                        };
+                    });
+                }
+            })
+            .then(result => {
+                console.log('Response:', result);
+                
+                let html = '<h3>' + (result.ok ? 'Success!' : 'Error!') + '</h3>';
+                html += '<p>Status: ' + result.status + '</p>';
+                
+                if (typeof result.data === 'object') {
+                    html += '<pre>' + JSON.stringify(result.data, null, 2) + '</pre>';
+                    
+                    if (result.data.token) {
+                        html += '<p class="success">Token received!</p>';
+                        // Store the token in localStorage
+                        localStorage.setItem('user', JSON.stringify(result.data));
+                        html += '<p>Token stored in localStorage</p>';
+                    }
+                } else {
+                    html += '<p>' + result.data + '</p>';
+                }
+                
+                resultDiv.innerHTML = html;
+                resultDiv.className = result.ok ? 'success' : 'error';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultDiv.innerHTML = '<h3>Error!</h3><p>' + error.message + '</p>';
+                resultDiv.className = 'error';
+            });
+        }
+    </script>
+</body>
+</html> 

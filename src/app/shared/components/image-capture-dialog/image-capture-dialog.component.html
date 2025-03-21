@@ -1,45 +1,54 @@
-<h2 mat-dialog-title>Take a Photo</h2>
+<h2 mat-dialog-title class="dialog-title">Take a Photo</h2>
 
 <mat-dialog-content class="compact-dialog">
   <div class="camera-container">
     <div *ngIf="errors.length > 0" class="camera-error">
+      <mat-icon color="warn">error</mat-icon>
       <h3>Camera Error</h3>
-      <p *ngFor="let error of errors">{{error | json}}</p>
+      <p *ngFor="let error of errors">{{error.message || 'Failed to initialize camera'}}</p>
+      <button mat-raised-button color="primary" (click)="cancel()">
+        <mat-icon>arrow_back</mat-icon> Go Back
+      </button>
     </div>
 
-    <div *ngIf="multipleWebcamsAvailable" class="camera-selection">
+    <div *ngIf="multipleWebcamsAvailable && errors.length === 0" class="camera-selection">
       <mat-form-field appearance="outline" class="compact-field">
-        <mat-label>Camera</mat-label>
+        <mat-label>Select Camera</mat-label>
         <mat-select [value]="deviceId" (selectionChange)="changeWebcam($event.value)">
           <mat-option *ngFor="let device of availableDevices; let i = index" [value]="device.deviceId">
             {{device.label || 'Camera ' + (i+1)}}
           </mat-option>
         </mat-select>
+        <mat-hint>Choose between front/back camera on mobile</mat-hint>
       </mat-form-field>
     </div>
 
-    <div *ngIf="showWebcam" class="webcam-container">
-      <webcam
-        [height]="360"
-        [width]="480"
-        [trigger]="triggerObservable"
-        (imageCapture)="handleImage($event)"
-        [videoOptions]="videoOptions"
-        [allowCameraSwitch]="false"
-        [switchCamera]="nextWebcamObservable"
-        (cameraSwitched)="cameraWasSwitched($event)"
-        (initError)="handleInitError($event)"
-      ></webcam>
+    <div *ngIf="showWebcam && errors.length === 0" class="webcam-container">
+      <div class="webcam-wrapper">
+        <webcam
+          [width]="640"
+          [height]="480"
+          [trigger]="triggerObservable"
+          (imageCapture)="handleImage($event)"
+          [videoOptions]="videoOptions"
+          [allowCameraSwitch]="false"
+          [switchCamera]="nextWebcamObservable"
+          (cameraSwitched)="cameraWasSwitched($event)"
+          (initError)="handleInitError($event)"
+        ></webcam>
+      </div>
       
       <div class="camera-controls">
         <button mat-raised-button color="primary" (click)="triggerSnapshot()">
-          <mat-icon>photo_camera</mat-icon> Capture
+          <mat-icon>photo_camera</mat-icon> Capture Photo
         </button>
       </div>
     </div>
 
     <div *ngIf="webcamImage" class="snapshot-container">
-      <img [src]="webcamImage.imageAsDataUrl" alt="Captured image">
+      <div class="image-wrapper">
+        <img [src]="webcamImage.imageAsDataUrl" alt="Captured image">
+      </div>
       
       <div class="snapshot-controls">
         <button mat-raised-button color="warn" (click)="retake()">
@@ -47,13 +56,13 @@
         </button>
         
         <button mat-raised-button color="primary" (click)="useImage()">
-          <mat-icon>check</mat-icon> Use This Image
+          <mat-icon>check</mat-icon> Use Photo
         </button>
       </div>
     </div>
   </div>
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
+<mat-dialog-actions align="center" *ngIf="!webcamImage && errors.length === 0">
   <button mat-button (click)="cancel()">Cancel</button>
 </mat-dialog-actions> 

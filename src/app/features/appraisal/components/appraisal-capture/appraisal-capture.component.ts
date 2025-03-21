@@ -209,9 +209,30 @@ export class AppraisalCaptureComponent implements OnInit, OnDestroy {
 
     this.analyzing = true;
     try {
+      // Create a base object with the image data
+      const appraisalData = {
+        imageUrl: this.imageData,
+        timestamp: new Date(),
+        appraisal: {
+          details: '',
+          marketResearch: ''
+        }
+      };
+
+      // Call the API to analyze the image
       const result = await this.appraisalService.analyzeImage(this.imageData);
+      
+      // Merge the API result with our base object
+      const completeResult = {
+        ...appraisalData,
+        ...result
+      };
+      
+      console.log('Sending to results component:', completeResult);
+      
+      // Navigate to the results page with the complete data
       this.router.navigate(['/appraisal/results'], { 
-        state: { appraisalData: result } 
+        state: { appraisalData: completeResult } 
       });
     } catch (err: any) {
       console.error('Error analyzing image:', err);

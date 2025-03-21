@@ -20,42 +20,67 @@ export class AuthInterceptor implements HttpInterceptor {
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     const token = this.authService.getToken();
-    console.log('AuthInterceptor: Request URL:', request.url);
-    console.log('AuthInterceptor: Token present:', !!token);
+    const currentUser = this.authService.getCurrentUser();
+    
+    console.log('AuthInterceptor - Request Details:', {
+      url: request.url,
+      method: request.method,
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+      userRole: currentUser?.role,
+      headers: request.headers.keys()
+    });
 
+    let clonedRequest = request;
+    
     if (token) {
-      request = request.clone({
+      // Clone the request and add the token
+      clonedRequest = request.clone({
         setHeaders: {
-          'x-auth-token': token
+          'Authorization': `Bearer ${token}`
         }
       });
-      console.log('AuthInterceptor: Added token to request headers');
+      console.log('AuthInterceptor - Added Authorization header');
+      console.log('AuthInterceptor - Final headers:', clonedRequest.headers.keys());
     } else {
-      console.log('AuthInterceptor: No token available to add to request');
+      console.warn('AuthInterceptor - No token available for request:', request.url);
     }
-
-    return next.handle(request).pipe(
+    
+    // Always return the cloned request
+    return next.handle(clonedRequest).pipe(
       catchError((error: HttpErrorResponse) => {
-        console.log('AuthInterceptor: Caught error:', error.status, error.message);
+        this.logErrorDetails(error, clonedRequest);
         
-        // Only log out on 401 errors for authentication-related endpoints
         if (error.status === 401) {
-          // Check if this is an auth endpoint or a protected endpoint
           const url = error.url || '';
           const isAuthEndpoint = url.includes('/api/auth/');
           
-          // Don't log out for initial data loading errors
-          if (isAuthEndpoint) {
-            console.log('AuthInterceptor: 401 error on auth endpoint, logging out user');
+          if (!isAuthEndpoint) {
+            console.error('AuthInterceptor - Unauthorized access, logging out');
             this.authService.logout();
             this.router.navigate(['/auth/login']);
-          } else {
-            console.log('AuthInterceptor: 401 error on non-auth endpoint, not logging out');
-            // Just report the error without logging out
           }
         }
         return throwError(() => error);
       })
     );
+  }
+  
+  private logErrorDetails(error: HttpErrorResponse, request: HttpRequest<unknown>) {
+    console.error('AuthInterceptor - Error Response:', {
+      url: request.url,
+      status: error.status,
+      statusText: error.statusText,
+      message: error.message,
+      error: error.error
+    });
+    
+    if (error.status === 0) {
+      console.error('AuthInterceptor - Network error - Backend server may be down or unreachable');
+    } else if (error.status === 401) {
+      console.error('AuthInterceptor - Unauthorized error - Token may be invalid or expired');
+    } else if (error.status === 403) {
+      console.error('AuthInterceptor - Forbidden error - User may not have required permissions');
+    }
   }
 } 

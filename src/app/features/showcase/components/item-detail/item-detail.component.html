@@ -71,7 +71,7 @@
     </div>
 
     <div class="item-info">
-      <h1 class="item-name">{{item.name}}</h1>
+      <h1 class="item-name">{{item.name || 'Unnamed Item'}}</h1>
       
       <div class="item-badges">
         <span class="category-badge">{{item.category || 'Uncategorized'}}</span>
@@ -82,26 +82,98 @@
         <h2>{{item.estimatedValue || 'Not Appraised'}}</h2>
       </div>
       
-      <!-- Admin Information -->
-      <mat-card class="admin-card" *ngIf="isAdmin">
+      <!-- Admin Controls (only visible to admins) -->
+      <mat-card class="admin-card" *ngIf="isAdmin === true">
         <mat-card-header>
           <mat-icon mat-card-avatar>admin_panel_settings</mat-icon>
-          <mat-card-title>Admin Information</mat-card-title>
+          <mat-card-title>Admin Controls</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <p><strong>Item ID:</strong> {{item._id}}</p>
-          <p><strong>User ID:</strong> {{item.userId}}</p>
-          <p><strong>Published:</strong> {{item.isPublished ? 'Yes' : 'No'}}</p>
-          <p><strong>Created:</strong> {{item.timestamp | date:'medium'}}</p>
+          <p><strong>Item ID:</strong> {{item._id || 'N/A'}}</p>
+          <p><strong>User ID:</strong> {{item.userId || 'N/A'}}</p>
+          <p><strong>Published Status:</strong> {{item.isPublished ? 'Yes' : 'No'}}</p>
+          <p><strong>Creation Date:</strong> {{item.timestamp ? (item.timestamp | date:'medium') : 'Unknown'}}</p>
         </mat-card-content>
         <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)">
+          <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)" [disabled]="!item._id">
             <mat-icon>edit</mat-icon> Edit Item
           </button>
           <button mat-raised-button color="warn" (click)="deleteItem()" class="delete-button">
             <mat-icon>delete</mat-icon> Delete Item
           </button>
         </mat-card-actions>
+      </mat-card>
+      
+      <!-- Comprehensive Item Details Card -->
+      <mat-card class="details-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>info</mat-icon>
+          <mat-card-title>Item Details</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <!-- All Item Details in Grid Layout -->
+          <div class="item-details-grid">
+            <!-- Technical Details -->
+            <div class="detail-row">
+              <div class="detail-label"><strong>Reference ID:</strong></div>
+              <div class="detail-value">{{item._id | slice:0:8}}...{{item._id | slice:-8}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label"><strong>Status:</strong></div>
+              <div class="detail-value">{{item.isPublished ? 'Available' : 'Not Available'}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label"><strong>Added:</strong></div>
+              <div class="detail-value">{{item.timestamp ? (item.timestamp | date:'MMM d, yyyy') : 'Unknown'}}</div>
+            </div>
+            
+            <!-- Item Properties -->
+            <div class="detail-row">
+              <div class="detail-label"><strong>Category:</strong></div>
+              <div class="detail-value">{{item.category || 'Uncategorized'}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label"><strong>Condition:</strong></div>
+              <div class="detail-value">{{item.condition || 'Unknown'}}</div>
+            </div>
+            <div class="detail-row">
+              <div class="detail-label"><strong>Estimated Value:</strong></div>
+              <div class="detail-value">{{item.estimatedValue || 'Not Appraised'}}</div>
+            </div>
+            
+            <!-- Conditional Details -->
+            <div class="detail-row" *ngIf="item?.height">
+              <div class="detail-label"><strong>Height:</strong></div>
+              <div class="detail-value">{{item.height}}</div>
+            </div>
+            <div class="detail-row" *ngIf="item?.width">
+              <div class="detail-label"><strong>Width:</strong></div>
+              <div class="detail-value">{{item.width}}</div>
+            </div>
+            <div class="detail-row" *ngIf="item?.weight">
+              <div class="detail-label"><strong>Weight:</strong></div>
+              <div class="detail-value">{{item.weight}}</div>
+            </div>
+          </div>
+          
+          <mat-divider class="section-divider" *ngIf="renderedDetails || item.appraisal?.details"></mat-divider>
+          
+          <!-- Detailed Description -->
+          <div class="description-section">
+            <div class="description-header">
+              <strong>Description:</strong>
+            </div>
+            <div class="description-content">
+              <div *ngIf="renderedDetails" class="markdown-content" [innerHTML]="renderedDetails"></div>
+              <div *ngIf="!renderedDetails && item.appraisal?.details" class="description-text">
+                {{item.appraisal?.details}}
+              </div>
+              <div *ngIf="!renderedDetails && !item.appraisal?.details" class="fallback-content">
+                <p>No additional details available for this item.</p>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
       </mat-card>
       
       <!-- Member Information -->
@@ -127,53 +199,6 @@
             <mat-icon>email</mat-icon> Contact Member
           </button>
         </mat-card-actions>
-      </mat-card>
-      
-      <mat-card class="details-card">
-        <mat-card-header>
-          <mat-card-title>Item Details</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div class="item-details two-column-layout">
-            <div class="left-column">
-              <div class="detail-section">
-                <span class="label">Category:</span>
-                <span class="value">{{item.category}}</span>
-              </div>
-              
-              <div class="detail-section">
-                <span class="label">Condition:</span>
-                <span class="value">{{item.condition}}</span>
-              </div>
-              
-              <div class="detail-section">
-                <span class="label">Estimated Value:</span>
-                <span class="value">{{item.estimatedValue}}</span>
-              </div>
-            </div>
-            
-            <div class="right-column">
-              <div class="detail-section" *ngIf="item.height">
-                <span class="label">Height:</span>
-                <span class="value">{{item.height}}</span>
-              </div>
-              
-              <div class="detail-section" *ngIf="item.width">
-                <span class="label">Width:</span>
-                <span class="value">{{item.width}}</span>
-              </div>
-              
-              <div class="detail-section" *ngIf="item.weight">
-                <span class="label">Weight:</span>
-                <span class="value">{{item.weight}}</span>
-              </div>
-            </div>
-          </div>
-          <div *ngIf="renderedDetails" class="markdown-content" [innerHTML]="renderedDetails"></div>
-          <div *ngIf="!renderedDetails" class="fallback-content">
-            <p>No details available for this item.</p>
-          </div>
-        </mat-card-content>
       </mat-card>
       
       <mat-card class="market-research-card">

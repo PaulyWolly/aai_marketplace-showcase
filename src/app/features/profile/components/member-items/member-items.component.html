@@ -25,68 +25,48 @@
     <mat-error>{{error}}</mat-error>
   </div>
 
-  <div class="table-container mat-elevation-z8">
+  <!-- Grid layout for items instead of a table -->
+  <div class="items-grid-container">
     <div *ngIf="loading" class="loading-overlay">
       <mat-spinner></mat-spinner>
     </div>
+    
+    <div *ngIf="!loading && dataSource.data.length === 0" class="no-items-message">
+      <mat-icon>sentiment_dissatisfied</mat-icon>
+      <p>You don't have any items yet.</p>
+      <button mat-raised-button color="primary" (click)="appraiseNewItem()">Add Your First Item</button>
+    </div>
 
-    <table mat-table [dataSource]="dataSource" matSort>
-      <!-- Name Column -->
-      <ng-container matColumnDef="name">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
-        <td mat-cell *matCellDef="let item">{{item.name}}</td>
-      </ng-container>
-
-      <!-- Category Column -->
-      <ng-container matColumnDef="category">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
-        <td mat-cell *matCellDef="let item">{{item.category}}</td>
-      </ng-container>
-
-      <!-- Condition Column -->
-      <ng-container matColumnDef="condition">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Condition</th>
-        <td mat-cell *matCellDef="let item">{{item.condition}}</td>
-      </ng-container>
-
-      <!-- Estimated Value Column -->
-      <ng-container matColumnDef="estimatedValue">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Est. Value</th>
-        <td mat-cell *matCellDef="let item">{{item.estimatedValue}}</td>
-      </ng-container>
-
-      <!-- Date Column -->
-      <ng-container matColumnDef="timestamp">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Date Added</th>
-        <td mat-cell *matCellDef="let item">{{item.timestamp ? (item.timestamp | date:'medium') : 'N/A'}}</td>
-      </ng-container>
-
-      <!-- Actions Column -->
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Actions</th>
-        <td mat-cell *matCellDef="let item">
+    <div class="items-grid">
+      <mat-card *ngFor="let item of dataSource.data" class="item-card">
+        <img mat-card-image [src]="item.imageUrl || placeholderImage" [alt]="item.name" (error)="handleImageError($event)">
+        <mat-card-content>
+          <h3>{{item.name}}</h3>
+          <div class="item-badges">
+            <span class="category-badge">{{item.category || 'Uncategorized'}}</span>
+            <span class="condition-badge">{{item.condition || 'Unknown'}}</span>
+          </div>
+          <p class="item-value">{{item.estimatedValue || 'Not Appraised'}}</p>
+          <p class="item-date">Added: {{item.timestamp ? (item.timestamp | date:'MMM d, yyyy') : 'N/A'}}</p>
+        </mat-card-content>
+        <mat-card-actions>
           <button mat-icon-button color="primary" (click)="editItem(item._id!)" matTooltip="Edit Item">
             <mat-icon>edit</mat-icon>
           </button>
+          <button mat-icon-button color="primary" (click)="viewInShowcase(item)" matTooltip="View in Showcase">
+            <mat-icon>visibility</mat-icon>
+          </button>
           <button mat-icon-button [color]="item.isPublished ? 'accent' : 'default'" (click)="togglePublished(item)" 
             [matTooltip]="item.isPublished ? 'Unpublish from Showcase' : 'Publish to Showcase'">
-            <mat-icon>{{ item.isPublished ? 'visibility' : 'visibility_off' }}</mat-icon>
+            <mat-icon>{{ item.isPublished ? 'menu_book' : 'book_off' }}</mat-icon>
           </button>
           <button mat-icon-button color="warn" (click)="deleteItem(item._id!)" matTooltip="Delete Item">
             <mat-icon>delete</mat-icon>
           </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-
-      <!-- Row shown when there is no matching data -->
-      <tr class="mat-row" *matNoDataRow>
-        <td class="mat-cell" colspan="6">No items found</td>
-      </tr>
-    </table>
-
-    <mat-paginator [pageSizeOptions]="[5, 10, 25, 100]" showFirstLastButtons></mat-paginator>
+        </mat-card-actions>
+      </mat-card>
+    </div>
   </div>
+
+  <mat-paginator [pageSizeOptions]="[12, 24, 36, 48]" showFirstLastButtons></mat-paginator>
 </div> 

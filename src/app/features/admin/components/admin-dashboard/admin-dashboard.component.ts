@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { AuthService, User } from '../../../../core/services/auth.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../../environments/environment';
 import { CreateAdminDialogComponent } from '../create-admin-dialog/create-admin-dialog.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { ActivatedRoute, Router } from '@angular/router';
 
 interface MemberSelection {
   id: string;
@@ -17,7 +18,7 @@ interface MemberSelection {
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })
-export class AdminDashboardComponent {
+export class AdminDashboardComponent implements OnInit {
   selectedTabIndex = 0;
   selectedSection = 'users'; // Default to users section
   
@@ -34,15 +35,49 @@ export class AdminDashboardComponent {
     private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private http: HttpClient
+    private http: HttpClient,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
+
+  ngOnInit(): void {
+    console.log('AdminDashboard - Initializing component');
+    console.log('AdminDashboard - Current user:', this.currentUser);
+    
+    // Check query params for selected section
+    this.route.queryParams.subscribe(params => {
+      if (params['selectedSection']) {
+        this.selectedSection = params['selectedSection'];
+        console.log('AdminDashboard - Selected section from URL:', this.selectedSection);
+      }
+      
+      if (params['userId']) {
+        this.selectedMemberId = params['userId'];
+        console.log('AdminDashboard - Selected user ID from URL:', this.selectedMemberId);
+      }
+    });
+    
+    // Force user section to be selected first to ensure data loads
+    setTimeout(() => {
+      console.log('AdminDashboard - Forcing section selection:', this.selectedSection);
+      this.selectSection(this.selectedSection);
+    }, 100);
+  }
 
   get currentUser(): User | null {
     return this.authService.getCurrentUser();
   }
 
   selectSection(section: string): void {
+    console.log('AdminDashboard - Selecting section:', section);
     this.selectedSection = section;
+    
+    // Update URL to reflect section change (without reloading page)
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { selectedSection: section },
+      queryParamsHandling: 'merge'
+    });
   }
   
   /**

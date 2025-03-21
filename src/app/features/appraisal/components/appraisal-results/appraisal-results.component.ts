@@ -3,6 +3,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { AppraisalService } from '../../services/appraisal.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 interface AppraisalData {
   timestamp: Date;
@@ -38,7 +39,8 @@ export class AppraisalResultsComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private appraisalService: AppraisalService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private snackBar: MatSnackBar
   ) {
     // Configure marked options
     marked.setOptions({
@@ -143,12 +145,16 @@ export class AppraisalResultsComponent implements OnInit {
 
     this.isSaving = true;
     try {
-      await this.appraisalService.saveAppraisal(this.appraisalData);
-      // Show success message or navigate to history
+      console.log('Saving appraisal data:', this.appraisalData);
+      const savedAppraisal = await this.appraisalService.saveAppraisal(this.appraisalData);
+      console.log('Appraisal saved successfully:', savedAppraisal);
+      this.snackBar.open('Appraisal saved successfully', 'Close', { duration: 3000 });
+      // Navigate to history
       this.router.navigate(['/appraisal/history']);
     } catch (err) {
       console.error('Error saving appraisal:', err);
       this.error = 'Failed to save appraisal. Please try again.';
+      this.snackBar.open('Failed to save appraisal', 'Close', { duration: 3000 });
     } finally {
       this.isSaving = false;
     }

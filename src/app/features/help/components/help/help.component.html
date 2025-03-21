@@ -1,0 +1,41 @@
+<div class="help-container">
+  <div class="header">
+    <h1>Help & FAQ</h1>
+    <p>Find answers to commonly asked questions about using AAI - Appraise An Item</p>
+  </div>
+  
+  <div class="faq-container">
+    <mat-accordion class="faq-accordion" [multi]="true">
+      <mat-expansion-panel *ngFor="let section of faqSections; let i = index" 
+                          [expanded]="i === expandedSection"
+                          (opened)="expandedSection = i">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <h2>{{section.title}}</h2>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+        
+        <div class="faq-items">
+          <mat-card *ngFor="let item of section.items" class="faq-item">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>help_outline</mat-icon>
+              <mat-card-title>{{item.question}}</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <p>{{item.answer}}</p>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </div>
+  
+  <div class="additional-help">
+    <h2>Need Additional Help?</h2>
+    <p>If you couldn't find the answer to your question, feel free to contact our support team.</p>
+    <button mat-raised-button color="primary">
+      <mat-icon>email</mat-icon>
+      Contact Support
+    </button>
+  </div>
+</div> 

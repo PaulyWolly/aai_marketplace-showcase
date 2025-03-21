@@ -49,6 +49,15 @@
             <span *ngIf="isMenuExpanded">Admin Dashboard</span>
           </a>
         </ng-container>
+        
+        <!-- Help Button -->
+        <a mat-list-item routerLink="/help" routerLinkActive="active"
+           [matTooltip]="!isMenuExpanded ? 'Help' : ''" 
+           matTooltipPosition="right"
+           matTooltipTouchGestures="on">
+          <mat-icon>help</mat-icon>
+          <span *ngIf="isMenuExpanded">Help</span>
+        </a>
       </mat-nav-list>
     </mat-sidenav>
 

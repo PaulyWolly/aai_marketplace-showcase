@@ -11,6 +11,7 @@ import { LayoutModule } from './layout/layout.module';
 import { CoreModule } from './core/core.module';
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { SharedModule } from './shared/shared.module';
+import { AppraisalModule } from './features/appraisal/appraisal.module';
 
 export function markedOptionsFactory(): MarkedOptions {
   return {
@@ -40,7 +41,8 @@ export function markedOptionsFactory(): MarkedOptions {
         provide: MarkedOptions,
         useFactory: markedOptionsFactory
       }
-    })
+    }),
+    AppraisalModule,
   ],
   providers: [
     {

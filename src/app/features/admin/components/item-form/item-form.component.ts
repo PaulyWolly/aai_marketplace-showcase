@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { AppraisalService, Appraisal } from '../../../appraisal/services/appraisal.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { ImageCaptureDialogComponent } from '../../../../shared/components/image-capture-dialog/image-capture-dialog.component';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-item-form',
@@ -250,52 +251,160 @@ export class ItemFormComponent implements OnInit {
       this.loading = true;
       this.error = null;
       
-      const formData = this.itemForm.value;
+      // Get form data
+      const formData = {...this.itemForm.value};
       
-      // Ensure we have at least one image
-      if (this.images.length === 0) {
-        this.error = 'At least one image is required';
-        this.loading = false;
-        this.snackBar.open('At least one image is required', 'Close', { duration: 3000 });
-        return;
-      }
-      
-      // If we have images in the array, use the first one as the main imageUrl if not already set
-      if (!formData.imageUrl && formData.images && formData.images.length > 0) {
-        formData.imageUrl = formData.images[0];
-      }
-      
-      if (this.isEditMode && this.itemId) {
-        // Update existing item
-        await this.appraisalService.saveAppraisal({
-          _id: this.itemId,
-          // Preserve the original userId if this is an admin editing a member's item
-          userId: this.originalItem?.userId,
-          ...formData
+      // Check if we have images
+      if (formData.images && formData.images.length > 0) {
+        // Create FormData object for multipart/form-data submission
+        const multipartFormData = new FormData();
+        
+        // Add form fields to FormData
+        Object.keys(formData).forEach(key => {
+          if (key !== 'images') {
+            if (key === 'appraisal') {
+              multipartFormData.append(key, JSON.stringify(formData[key]));
+            } else if (key === 'isPublished') {
+              multipartFormData.append(key, formData[key] ? 'true' : 'false');
+            } else {
+              multipartFormData.append(key, formData[key]);
+            }
+          }
         });
-        this.snackBar.open('Item updated successfully', 'Close', { duration: 3000 });
+        
+        // Add ID if in edit mode
+        if (this.isEditMode && this.itemId) {
+          multipartFormData.append('_id', this.itemId);
+          multipartFormData.append('id', this.itemId);
+        }
+        
+        // Convert base64 image to blob and add to form data
+        // Get the main image from the form
+        if (formData.imageUrl) {
+          try {
+            // Check if the image is a data URL (from the camera or file upload)
+            if (formData.imageUrl.startsWith('data:')) {
+              const blob = this.dataURLtoBlob(formData.imageUrl);
+              multipartFormData.append('image', blob, 'image.jpg');
+            } else {
+              // If it's a URL, pass it as is
+              multipartFormData.append('imageUrl', formData.imageUrl);
+            }
+          } catch (err) {
+            console.error('Error processing image:', err);
+            this.snackBar.open('Error processing image. Please try again.', 'Close', { duration: 3000 });
+            this.loading = false;
+            return;
+          }
+        }
+        
+        // Submit the form data using XHR to support multipart/form-data
+        const result = await this.submitFormWithMultipart(multipartFormData);
+        
+        this.snackBar.open(this.isEditMode ? 'Item updated successfully' : 'Item created successfully', 'Close', { duration: 3000 });
+        
+        if (this.returnUrl) {
+          this.router.navigateByUrl(this.returnUrl);
+        } else {
+          this.router.navigate(['/admin/items']);
+        }
       } else {
-        // Create new item
-        await this.appraisalService.saveAppraisal(formData);
-        this.snackBar.open('Item created successfully', 'Close', { duration: 3000 });
+        // Standard submission without file upload
+        console.warn('No images found, using standard JSON submission');
+        
+        // Ensure required data is present
+        if (!formData.imageUrl) {
+          this.snackBar.open('Please add at least one image', 'Close', { duration: 3000 });
+          this.loading = false;
+          return;
+        }
+        
+        const result = await this.appraisalService.saveAppraisal(formData);
+        
+        this.snackBar.open(this.isEditMode ? 'Item updated successfully' : 'Item created successfully', 'Close', { duration: 3000 });
+        
+        if (this.returnUrl) {
+          this.router.navigateByUrl(this.returnUrl);
+        } else {
+          this.router.navigate(['/admin/items']);
+        }
       }
-      
-      // Navigate back to the appropriate page
-      if (this.returnUrl) {
-        this.router.navigateByUrl(decodeURIComponent(this.returnUrl));
-      } else {
-        this.router.navigate(['/admin/items']);
-      }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving item:', err);
-      if (err instanceof Error) {
-        this.error = err.message || 'Failed to save item';
-      } else {
-        this.error = 'Failed to save item';
-      }
-      this.snackBar.open('Failed to save item', 'Close', { duration: 3000 });
+      this.error = err.message || 'Failed to save item';
+      this.snackBar.open(`Error: ${this.error}`, 'Close', { duration: 5000 });
     } finally {
       this.loading = false;
+    }
+  }
+  
+  /**
+   * Submit form data using multipart/form-data approach
+   */
+  private submitFormWithMultipart(formData: FormData): Promise<any> {
+    const url = this.isEditMode && this.itemId
+      ? `${environment.apiUrl}/items/${this.itemId}`
+      : `${environment.apiUrl}/items`;
+      
+    const method = this.isEditMode ? 'PUT' : 'POST';
+    
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, url);
+      
+      // Add auth token
+      const token = localStorage.getItem('token');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+      
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (err) {
+            resolve(xhr.responseText);
+          }
+        } else {
+          reject(new Error(`Server returned ${xhr.status}: ${xhr.statusText}`));
+        }
+      };
+      
+      xhr.onerror = () => {
+        reject(new Error('Network error occurred'));
+      };
+      
+      xhr.send(formData);
+    });
+  }
+  
+  /**
+   * Convert base64 data URL to Blob
+   */
+  private dataURLtoBlob(dataUrl: string): Blob {
+    try {
+      // Split the data URL to get the base64 data
+      const parts = dataUrl.split(';base64,');
+      
+      if (parts.length !== 2) {
+        throw new Error('Invalid data URL format');
+      }
+      
+      const contentType = parts[0].split(':')[1] || 'image/jpeg';
+      const raw = window.atob(parts[1]);
+      const rawLength = raw.length;
+      
+      // Create array buffer
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      
+      return new Blob([uInt8Array], { type: contentType });
+    } catch (err) {
+      console.error('Error converting data URL to blob:', err);
+      throw err;
     }
   }
 

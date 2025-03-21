@@ -1,9 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { auth, isAdmin } = require('../middleware/auth');
 const Appraisal = require('../models/appraisal.model');
 const openAIService = require('../services/openai.service');
+
+// Configure multer for image upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = 'uploads';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png|gif/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Only image files are allowed!'));
+  }
+});
 
 // Define Appraisal Schema if it doesn't exist
 let AppraisalSchema;
@@ -236,9 +270,14 @@ router.get('/published', auth, async (req, res) => {
 // Get a specific appraisal by ID
 router.get('/:id', auth, async (req, res) => {
   try {
-    const appraisal = await AppraisalSchema.findById(req.params.id);
+    console.log(`Fetching appraisal with ID: ${req.params.id}`);
+    
+    // Use lean() to get a plain JavaScript object instead of a full Mongoose document
+    // This is much faster for read-only operations
+    const appraisal = await AppraisalSchema.findById(req.params.id).lean();
     
     if (!appraisal) {
+      console.log(`Appraisal with ID ${req.params.id} not found`);
       return res.status(404).json({ message: 'Appraisal not found' });
     }
     
@@ -248,9 +287,11 @@ router.get('/:id', auth, async (req, res) => {
       req.user.role !== 'admin' && 
       !appraisal.isPublished
     ) {
+      console.log(`User ${req.user.id} tried to access unauthorized appraisal ${req.params.id}`);
       return res.status(403).json({ message: 'You do not have permission to view this appraisal' });
     }
     
+    console.log(`Successfully retrieved appraisal ${req.params.id}`);
     res.json(appraisal);
   } catch (error) {
     console.error('Error fetching appraisal:', error);
@@ -345,6 +386,216 @@ router.get('/test', async (req, res) => {
       message: 'Error testing appraisal database', 
       error: error.message 
     });
+  }
+});
+
+// Create or update appraisal with image upload
+router.post('/', auth, upload.single('image'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    
+    console.log('Received multipart form data with image');
+    console.log('Form fields:', req.body);
+    console.log('File:', req.file);
+    
+    // Parse any JSON fields that were sent as strings
+    let appraisalData = { ...req.body };
+    
+    // Handle nested JSON objects that might be stringified
+    if (typeof req.body.appraisal === 'string') {
+      try {
+        appraisalData.appraisal = JSON.parse(req.body.appraisal);
+      } catch (err) {
+        console.error('Error parsing appraisal JSON:', err);
+      }
+    }
+    
+    // Add image URL if file was uploaded
+    if (req.file) {
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      appraisalData.imageUrl = imageUrl;
+      
+      // Initialize or update images array
+      if (!appraisalData.images) {
+        appraisalData.images = [];
+      } else if (typeof appraisalData.images === 'string') {
+        try {
+          appraisalData.images = JSON.parse(appraisalData.images);
+        } catch (err) {
+          appraisalData.images = [];
+        }
+      }
+      
+      // Add the new image to the images array
+      appraisalData.images.push(imageUrl);
+      
+      console.log(`Image uploaded successfully, URL: ${imageUrl}`);
+    }
+    
+    // Ensure timestamp is set
+    appraisalData.timestamp = appraisalData.timestamp || new Date();
+    
+    // Set isPublished status
+    appraisalData.isPublished = appraisalData.isPublished !== undefined ? appraisalData.isPublished : true;
+    
+    // If not admin, always set userId to current user
+    // If admin, preserve the original userId if it exists
+    if (!isAdmin || !appraisalData.userId) {
+      appraisalData.userId = userId;
+    }
+    
+    // Verify required fields
+    const requiredFields = ['name', 'category', 'condition', 'estimatedValue', 'appraisal'];
+    const missingFields = requiredFields.filter(field => !appraisalData[field]);
+    
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
+      return res.status(400).json({
+        message: 'Missing required fields',
+        missingFields,
+        received: Object.keys(appraisalData)
+      });
+    }
+    
+    // Ensure appraisal object has required fields
+    if (!appraisalData.appraisal.details || !appraisalData.appraisal.marketResearch) {
+      console.error('Missing required appraisal fields');
+      return res.status(400).json({
+        message: 'Missing required appraisal fields',
+        missingFields: [
+          !appraisalData.appraisal.details ? 'appraisal.details' : null,
+          !appraisalData.appraisal.marketResearch ? 'appraisal.marketResearch' : null
+        ].filter(Boolean)
+      });
+    }
+    
+    // Check if we need to update or create
+    let appraisal;
+    
+    if (appraisalData._id) {
+      // Update existing appraisal
+      console.log(`Updating existing appraisal: ${appraisalData._id}`);
+      
+      if (isAdmin) {
+        // Admin can update any appraisal
+        appraisal = await AppraisalSchema.findOneAndUpdate(
+          { _id: appraisalData._id },
+          appraisalData,
+          { new: true }
+        );
+      } else {
+        // Regular user can only update their own appraisals
+        appraisal = await AppraisalSchema.findOneAndUpdate(
+          { _id: appraisalData._id, userId },
+          appraisalData,
+          { new: true }
+        );
+      }
+      
+      if (!appraisal) {
+        return res.status(404).json({ message: 'Appraisal not found or you do not have permission to update it' });
+      }
+    } else {
+      // Create new appraisal
+      console.log('Creating new appraisal');
+      appraisal = new AppraisalSchema(appraisalData);
+      await appraisal.save();
+    }
+    
+    console.log('Appraisal saved successfully:', appraisal._id);
+    res.json(appraisal);
+  } catch (error) {
+    console.error('Error saving appraisal with image:', error);
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.keys(error.errors).reduce((acc, key) => {
+        acc[key] = error.errors[key].message;
+        return acc;
+      }, {});
+      
+      return res.status(400).json({
+        message: 'Validation error',
+        validationErrors,
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({ message: 'Error saving appraisal', error: error.message });
+  }
+});
+
+// Update endpoint with image upload
+router.put('/:id', auth, upload.single('image'), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin';
+    const appraisalId = req.params.id;
+    
+    console.log(`Updating appraisal ${appraisalId} with multipart form data`);
+    console.log('Form fields:', req.body);
+    console.log('File:', req.file);
+    
+    // First check if the appraisal exists and user has permission
+    const existingAppraisal = await AppraisalSchema.findById(appraisalId);
+    
+    if (!existingAppraisal) {
+      return res.status(404).json({ message: 'Appraisal not found' });
+    }
+    
+    if (existingAppraisal.userId.toString() !== userId && !isAdmin) {
+      return res.status(403).json({ message: 'You do not have permission to update this appraisal' });
+    }
+    
+    // Parse any JSON fields that were sent as strings
+    let appraisalData = { ...req.body };
+    
+    // Handle nested JSON objects that might be stringified
+    if (typeof req.body.appraisal === 'string') {
+      try {
+        appraisalData.appraisal = JSON.parse(req.body.appraisal);
+      } catch (err) {
+        console.error('Error parsing appraisal JSON:', err);
+      }
+    }
+    
+    // Add image URL if file was uploaded
+    if (req.file) {
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      appraisalData.imageUrl = imageUrl;
+      
+      // Initialize or update images array
+      if (!appraisalData.images) {
+        appraisalData.images = [];
+      } else if (typeof appraisalData.images === 'string') {
+        try {
+          appraisalData.images = JSON.parse(appraisalData.images);
+        } catch (err) {
+          appraisalData.images = [];
+        }
+      }
+      
+      // Add the new image to the images array
+      appraisalData.images.push(imageUrl);
+      
+      console.log(`Image uploaded successfully, URL: ${imageUrl}`);
+    }
+    
+    // Ensure ID is set correctly
+    appraisalData._id = appraisalId;
+    
+    // Update the appraisal
+    const updatedAppraisal = await AppraisalSchema.findByIdAndUpdate(
+      appraisalId,
+      appraisalData,
+      { new: true }
+    );
+    
+    console.log('Appraisal updated successfully:', updatedAppraisal._id);
+    res.json(updatedAppraisal);
+  } catch (error) {
+    console.error('Error updating appraisal with image:', error);
+    res.status(500).json({ message: 'Error updating appraisal', error: error.message });
   }
 });
 

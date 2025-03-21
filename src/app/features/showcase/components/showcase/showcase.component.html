@@ -1,7 +1,23 @@
 <div class="showcase-container">
   <div class="header">
-    <h1>Showcase</h1>
-    <p>Browse items from our community</p>
+    <!-- Regular showcase header -->
+    <div *ngIf="!userId">
+      <h1>Showcase</h1>
+      <p>Browse items from our community</p>
+    </div>
+    
+    <!-- User-specific header -->
+    <div *ngIf="userId" class="user-items-header">
+      <h1>
+        <button mat-icon-button (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        {{userName ? userName + "'s Items" : "User's Items"}}
+      </h1>
+      <p *ngIf="isAdmin">
+        <mat-icon>person</mat-icon> User ID: {{userId}}
+      </p>
+    </div>
   </div>
 
   <mat-card class="filter-card">

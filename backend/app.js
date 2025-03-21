@@ -14,13 +14,40 @@ const itemRoutes = require('./routes/item.routes');
 // Initialize Express app
 const app = express();
 
+// Configure timeouts
+app.use((req, res, next) => {
+  // Set a generous timeout for all requests
+  req.setTimeout(60000); // 60-second timeout for requests
+  res.setTimeout(60000); // 60-second timeout for responses
+  next();
+});
+
+// CORS Configuration
+const corsOptions = {
+  origin: ['http://localhost:4200', 'http://127.0.0.1:4200', 'http://localhost:3000'],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204,
+  exposedHeaders: ['Authorization']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Add CORS headers debug middleware
+app.use((req, res, next) => {
+  console.log('Request headers:', req.headers);
+  console.log('CORS headers being set:', res.getHeaders());
+  next();
+});
+
 // Serve static files from the uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // API Routes
 app.use('/api/auth', authRoutes);

@@ -21,7 +21,10 @@ export class LoginComponent implements OnInit {
   ) {
     // Redirect if already logged in
     if (this.authService.isLoggedIn()) {
+      console.log('USER ALREADY LOGGED IN - redirecting');
       this.redirectBasedOnRole();
+    } else {
+      console.log('NO USER LOGGED IN - showing login form');
     }
 
     this.loginForm = this.formBuilder.group({
@@ -48,15 +51,32 @@ export class LoginComponent implements OnInit {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
 
+    // DEBUGGING - show complete info
+    console.log('======= LOGIN ATTEMPT DETAILS =======');
+    console.log('Email:', trimmedEmail);
+    console.log('Password length:', trimmedPassword.length);
+    
     this.authService.login(trimmedEmail, trimmedPassword)
       .subscribe({
         next: (user) => {
-          console.log('Login response received');
+          console.log('======= LOGIN RESPONSE =======');
+          console.log('Full user object:', user);
+          console.log('User ID:', user?._id);
           console.log('User role:', user?.role);
           console.log('Token present:', !!user?.token);
+          console.log('Token length:', user?.token?.length);
           
-          // Ensure we have a token before navigating
           if (user && user.token) {
+            // Check if we can store in localStorage
+            try {
+              localStorage.setItem('test-storage', 'test');
+              const testStorage = localStorage.getItem('test-storage');
+              console.log('LocalStorage test:', testStorage === 'test' ? 'WORKING' : 'FAILED');
+              localStorage.removeItem('test-storage');
+            } catch (e) {
+              console.error('LocalStorage error:', e);
+            }
+            
             console.log('Login successful, navigating to dashboard');
             this.redirectBasedOnRole();
           } else {
@@ -66,7 +86,12 @@ export class LoginComponent implements OnInit {
           this.loading = false;
         },
         error: (error) => {
-          console.error('Login error:', error);
+          console.error('======= LOGIN ERROR =======');
+          console.error('Error object:', error);
+          console.error('Status:', error.status);
+          console.error('Status text:', error.statusText);
+          console.error('Error message:', error.message);
+          console.error('Error details:', error.error);
           
           // More detailed error handling
           if (error.status === 401) {
@@ -83,6 +108,11 @@ export class LoginComponent implements OnInit {
   }
 
   private redirectBasedOnRole(): void {
+    // DEBUGGING - Add more logs
+    console.log('======= REDIRECT BASED ON ROLE =======');
+    console.log('Current user:', this.authService.getCurrentUser());
+    console.log('Is admin check result:', this.authService.isAdmin());
+    
     // Redirect based on user role
     if (this.authService.isAdmin()) {
       console.log('User is admin, redirecting to admin dashboard');

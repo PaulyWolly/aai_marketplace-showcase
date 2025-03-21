@@ -14,6 +14,27 @@
         Items
       </a>
       
+      <a mat-button [matMenuTriggerFor]="appraisalMenu">
+        <mat-icon>assessment</mat-icon>
+        Appraisals
+        <mat-icon>arrow_drop_down</mat-icon>
+      </a>
+      
+      <mat-menu #appraisalMenu="matMenu">
+        <a mat-menu-item routerLink="/appraisal/capture">
+          <mat-icon>photo_camera</mat-icon>
+          <span>Standard Appraisal</span>
+        </a>
+        <a mat-menu-item routerLink="/appraisal/web">
+          <mat-icon>public</mat-icon>
+          <span>Web Appraisal</span>
+        </a>
+        <a mat-menu-item routerLink="/appraisal/history">
+          <mat-icon>history</mat-icon>
+          <span>Appraisal History</span>
+        </a>
+      </mat-menu>
+      
       <!-- Show admin link only for admin users -->
       <a mat-button routerLink="/admin" *ngIf="authService.isAdmin()">
         <mat-icon>admin_panel_settings</mat-icon>

@@ -5,9 +5,8 @@ import { MatSort } from '@angular/material/sort';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { ItemService } from '../../../../core/services/item.service';
 import { AppraisalService, Appraisal } from '../../../appraisal/services/appraisal.service';
-import { AuthService } from '../../../../core/services/auth.service';
+import { AuthService, User } from '../../../../core/services/auth.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 // Extended interface to include user information
@@ -34,11 +33,12 @@ export class ItemManagementComponent implements OnInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
+  users: User[] = [];
+
   constructor(
     private router: Router,
     private route: ActivatedRoute,
     private appraisalService: AppraisalService,
-    private itemService: ItemService,
     private authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
@@ -82,110 +82,88 @@ export class ItemManagementComponent implements OnInit {
     try {
       this.loading = true;
       this.error = null;
-      let appraisals: Appraisal[] = [];
+      
+      // Reset the data source
+      this.dataSource.data = [];
+      
+      // Load users for mapping
+      await this.loadUsers();
       
       if (this.userItemsOnly && this.userId) {
         // Load specific user's items
         console.log(`Loading items for user ID: ${this.userId}`);
-        try {
-          appraisals = await this.appraisalService.getUserAppraisals(this.userId) || [];
-          console.log(`Loaded ${appraisals.length} items for user ${this.userId}`);
-          
-          if (!this.userName) {
-            // If userName is not provided, fetch user details
-            this.authService.getUserById(this.userId).subscribe(user => {
+        this.appraisalService.getUserAppraisals(this.userId).subscribe({
+          next: (appraisals) => {
+            console.log(`Loaded ${appraisals.length} items for user ${this.userId}`);
+            
+            if (!this.userName) {
+              // If userName is not provided, fetch user details
+              const user = this.users.find(u => u._id === this.userId);
               if (user) {
                 this.userName = `${user.firstName} ${user.lastName}`;
-                
-                // Update the data source with user name
-                const appraisalsWithUser: AppraisalWithUser[] = appraisals.map(appraisal => ({
-                  ...appraisal,
-                  userName: this.userName || 'Unknown User'
-                }));
-                
-                this.dataSource.data = appraisalsWithUser;
               }
-            }, error => {
-              console.error('Error fetching user details:', error);
-              // Still show items even if user details can't be fetched
-              this.dataSource.data = appraisals.map(appraisal => ({
-                ...appraisal,
-                userName: 'Unknown User'
-              }));
-            });
-          } else {
-            // If userName is provided, use it directly
-            const appraisalsWithUser: AppraisalWithUser[] = appraisals.map(appraisal => ({
-              ...appraisal,
-              userName: this.userName || 'Unknown User'
-            }));
+            }
             
-            this.dataSource.data = appraisalsWithUser;
+            this.processAppraisals(appraisals);
+          },
+          error: (err) => {
+            console.error(`Error loading items for user ${this.userId}:`, err);
+            this.error = `Failed to load items for user ${this.userId}`;
+            this.loading = false;
           }
-        } catch (error) {
-          console.error(`Error loading items for user ${this.userId}:`, error);
-          this.error = `Failed to load items for this user.`;
-          this.dataSource.data = [];
-        }
+        });
       } else if (this.userItemsOnly) {
         // Load current user's items
-        console.log('Loading current user\'s items');
-        try {
-          appraisals = await this.appraisalService.getUserAppraisals() || [];
-          console.log(`Loaded ${appraisals.length} items for current user`);
-          this.dataSource.data = appraisals;
-        } catch (error) {
-          console.error('Error loading current user items:', error);
-          this.error = 'Failed to load your items.';
-          this.dataSource.data = [];
-        }
+        console.log('Loading current user items');
+        this.appraisalService.getUserAppraisals().subscribe({
+          next: (appraisals) => {
+            console.log(`Loaded ${appraisals.length} items for current user`);
+            this.processAppraisals(appraisals);
+          },
+          error: (err) => {
+            console.error('Error loading current user items:', err);
+            this.error = 'Failed to load your items';
+            this.loading = false;
+          }
+        });
       } else {
-        // Load all items (admin view) with user information
-        console.log('Loading all items');
-        try {
-          appraisals = await this.appraisalService.getAllAppraisals() || [];
-          console.log(`Loaded ${appraisals.length} items total`);
-          
-          // Get all users to match with items
-          this.authService.getAllUsers().subscribe(
-            users => {
-              const userMap = new Map(users.map(user => [
-                user._id, 
-                { name: `${user.firstName} ${user.lastName}`, email: user.email }
-              ]));
-              
-              // Add user info to each appraisal
-              const appraisalsWithUser: AppraisalWithUser[] = appraisals.map(appraisal => ({
-                ...appraisal,
-                userName: userMap.get(appraisal.userId || '')?.name || 'Unknown User',
-                userEmail: userMap.get(appraisal.userId || '')?.email || 'Unknown'
-              }));
-              
-              this.dataSource.data = appraisalsWithUser;
-            },
-            error => {
-              console.error('Error fetching users:', error);
-              // Still show items even if user details can't be fetched
-              this.dataSource.data = appraisals.map(appraisal => ({
-                ...appraisal,
-                userName: 'Unknown User',
-                userEmail: 'Unknown'
-              }));
-            }
-          );
-        } catch (error) {
-          console.error('Error loading all items:', error);
-          this.error = 'Failed to load items. The API endpoint may not be available.';
-          this.dataSource.data = [];
-        }
+        // Load all items (admin only)
+        console.log('Loading all items (admin)');
+        this.appraisalService.getAllAppraisals().subscribe({
+          next: (appraisals) => {
+            console.log(`Loaded ${appraisals.length} items total`);
+            this.processAppraisals(appraisals);
+          },
+          error: (err) => {
+            console.error('Error loading all items:', err);
+            this.error = 'Failed to load items';
+            this.loading = false;
+          }
+        });
       }
     } catch (err) {
-      console.error('Error loading items:', err);
-      this.error = 'Failed to load items.';
-      this.dataSource.data = [];
-    } finally {
+      console.error('Error in loadItems:', err);
+      this.error = 'An unexpected error occurred while loading items';
       this.loading = false;
     }
+  }
+
+  processAppraisals(appraisals: Appraisal[]) {
+    // Map user IDs to user info
+    const userMap = new Map(this.users.map(user => [user._id, user]));
+    
+    // Transform appraisals to include user info
+    const items = appraisals.map(appraisal => ({
+      ...appraisal,
+      userName: userMap.get(appraisal.userId || '')
+        ? `${userMap.get(appraisal.userId || '')?.firstName || ''} ${userMap.get(appraisal.userId || '')?.lastName || ''}`
+        : 'Unknown User',
+      userEmail: userMap.get(appraisal.userId || '')?.email || 'Unknown'
+    }));
+    
+    // Update the data source
+    this.dataSource.data = items;
+    this.loading = false;
   }
 
   applyFilter(event: Event) {
@@ -246,5 +224,28 @@ export class ItemManagementComponent implements OnInit {
   
   viewItemDetails(id: string) {
     this.router.navigate(['/showcase/item', id]);
+  }
+
+  async loadUsers() {
+    try {
+      console.log('ItemManagement - Loading users...');
+      const currentUser = this.authService.getCurrentUser();
+      console.log('ItemManagement - Current user role:', currentUser?.role);
+      console.log('ItemManagement - Current user has token:', !!currentUser?.token);
+      
+      const users = await this.authService.getAllUsers().toPromise();
+      this.users = users || [];
+      console.log('ItemManagement - Loaded users for mapping:', this.users.length);
+      console.log('ItemManagement - User data:', JSON.stringify(this.users));
+    } catch (error: any) {
+      console.error('ItemManagement - Error loading users:', error);
+      console.error('ItemManagement - Error details:', {
+        name: error.name,
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText
+      });
+      this.error = 'Failed to load user information';
+    }
   }
 }

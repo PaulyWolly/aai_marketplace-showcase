@@ -4,11 +4,18 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { Appraisal } from '../../appraisal/services/appraisal.service';
 
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class ShowcaseService {
   private apiUrl = `${environment.apiUrl}/appraisals`;
+  private cache: Map<string, CacheEntry> = new Map();
+  private cacheExpiry = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   constructor(private http: HttpClient) {}
 
@@ -24,12 +31,39 @@ export class ShowcaseService {
     }
   }
 
+  async getUserItems(userId: string) {
+    try {
+      console.log('Fetching items for user:', userId);
+      const items = await this.http.get<Appraisal[]>(`${this.apiUrl}/user/${userId}`).toPromise();
+      console.log('Received user items:', items);
+      return items;
+    } catch (error) {
+      console.error('Error fetching user items:', error);
+      return [];
+    }
+  }
+
   async getItemById(id: string) {
     try {
       console.log('Fetching item by ID:', id, 'from URL:', `${this.apiUrl}/${id}`);
       
-      // First try to get the item directly from the appraisals endpoint
+      // Check cache first
+      const cacheKey = `item_${id}`;
+      const cachedItem = this.getFromCache(cacheKey);
+      
+      if (cachedItem) {
+        console.log('Retrieved item from cache:', id);
+        return cachedItem;
+      }
+      
+      // If not in cache, fetch from API
+      console.log('Item not in cache, fetching from API');
       const item = await this.http.get<Appraisal>(`${this.apiUrl}/${id}`).toPromise();
+      
+      // Store in cache
+      if (item) {
+        this.saveToCache(cacheKey, item);
+      }
       
       console.log('Received item:', item);
       return item;
@@ -76,11 +110,18 @@ export class ShowcaseService {
     
     return {
       _id: id,
+      id: id,
       name: 'Error Loading Item',
+      title: 'Error Loading Item',
+      description: errorMessage,
       category: 'Unknown',
       condition: 'Unknown',
       estimatedValue: 'N/A',
+      valueRange: { min: 'N/A', max: 'N/A' },
+      confidence: 0,
       imageUrl: placeholderImage,
+      createdAt: new Date().toISOString(),
+      sources: [],
       appraisal: {
         details: `**Error:** ${errorMessage}`,
         marketResearch: 'No market research available due to an error.'
@@ -93,5 +134,27 @@ export class ShowcaseService {
 
   deleteItem(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  // Helper methods for cache
+  private getFromCache(key: string): any | null {
+    const cached = this.cache.get(key);
+    if (!cached) return null;
+    
+    const now = Date.now();
+    if (now - cached.timestamp > this.cacheExpiry) {
+      // Cache expired
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return cached.data;
+  }
+  
+  private saveToCache(key: string, data: any): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
   }
 } 

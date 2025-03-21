@@ -81,7 +81,7 @@ export class ItemDetailComponent implements OnInit {
       
       // Add a timeout to prevent hanging requests
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000);
+        setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000);
       });
       
       // Race the item loading against the timeout
@@ -96,26 +96,32 @@ export class ItemDetailComponent implements OnInit {
         this.item = item;
         
         // Ensure we have basic data even if some fields are missing
-        if (!this.item.name) this.item.name = 'Unnamed Item';
-        if (!this.item.category) this.item.category = 'Uncategorized';
-        if (!this.item.condition) this.item.condition = 'Unknown';
-        if (!this.item.estimatedValue) this.item.estimatedValue = 'Not Appraised';
+        if (!this.item?.name) this.item!.name = 'Unnamed Item';
+        if (!this.item?.category) this.item!.category = 'Uncategorized';
+        if (!this.item?.condition) this.item!.condition = 'Unknown';
+        if (!this.item?.estimatedValue) this.item!.estimatedValue = 'Not Appraised';
         
         // Initialize appraisal object if it doesn't exist
-        if (!this.item.appraisal) {
-          this.item.appraisal = {
+        if (!this.item!.appraisal) {
+          this.item!.appraisal = {
             details: 'No details available',
             marketResearch: 'No market research available'
           };
+        } else {
+          // Ensure appraisal fields exist
+          if (!this.item!.appraisal.details) {
+            this.item!.appraisal.details = 'No details available';
+          }
+          if (!this.item!.appraisal.marketResearch) {
+            this.item!.appraisal.marketResearch = 'No market research available';
+          }
         }
         
         this.setupImageGallery();
         this.renderMarkdown();
         
         // Load the member's information
-        if (item.userId) {
-          this.loadMemberInfo(item.userId);
-        }
+        this.loadMemberInfo();
       } else {
         this.error = 'Item not found';
         console.error('Item not found for ID:', id);
@@ -132,9 +138,13 @@ export class ItemDetailComponent implements OnInit {
     }
   }
   
-  loadMemberInfo(userId: string): void {
-    this.memberLoading = true;
+  loadMemberInfo(userId?: string): void {
+    if (!userId) {
+      if (!this.item || !this.item.userId) return;
+      userId = this.item.userId;
+    }
     
+    this.memberLoading = true;
     this.authService.getBasicUserInfo(userId).subscribe({
       next: (user) => {
         if (this.item && user) {
@@ -175,6 +185,8 @@ export class ItemDetailComponent implements OnInit {
     
     if (!this.item) {
       console.warn('No item available for image gallery setup');
+      this.allImages = ['assets/images/placeholder.jpg'];
+      this.currentImageIndex = 0;
       return;
     }
     
@@ -202,12 +214,21 @@ export class ItemDetailComponent implements OnInit {
         this.allImages = [...this.allImages, ...additionalImages];
       }
       
+      // If no images were found, add a placeholder
+      if (this.allImages.length === 0) {
+        console.log('No images found, adding placeholder');
+        this.allImages.push('assets/images/placeholder.jpg');
+      }
+      
       // Reset the current image index
       this.currentImageIndex = 0;
       
       console.log('Image gallery setup complete. Total images:', this.allImages.length);
     } catch (error) {
       console.error('Error setting up image gallery:', error);
+      // Add a placeholder image in case of error
+      this.allImages = ['assets/images/placeholder.jpg'];
+      this.currentImageIndex = 0;
     }
   }
   
@@ -244,91 +265,98 @@ export class ItemDetailComponent implements OnInit {
   renderMarkdown(): void {
     console.log('Rendering markdown for item:', this.item);
     
-    if (this.item) {
-      try {
-        // Simple fallback text if markdown rendering fails
-        let detailsHtml = '<p>No details available</p>';
-        let marketResearchHtml = '<p>No market research available</p>';
-        
-        if (this.item.appraisal?.details) {
-          try {
-            // Try multiple approaches to render markdown
-            if (typeof marked === 'function') {
-              // marked is a function in some versions
-              detailsHtml = marked(this.item.appraisal.details);
-            } else if (marked.parse) {
-              // marked.parse exists in some versions
-              detailsHtml = marked.parse(this.item.appraisal.details);
-            } else if (marked.marked) {
-              // marked.marked exists in some versions
-              detailsHtml = marked.marked(this.item.appraisal.details);
-            } else {
-              // Fallback to simple HTML
-              detailsHtml = this.item.appraisal.details
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
-                .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
-                .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
-            }
-          } catch (e) {
-            console.error('Error rendering details markdown:', e);
-            // Fallback to simple HTML conversion
+    if (!this.item) {
+      console.warn('No item to render markdown for');
+      this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml('<p>No details available</p>');
+      this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml('<p>No market research available</p>');
+      return;
+    }
+
+    try {
+      // Simple fallback text if markdown rendering fails
+      let detailsHtml = '<p>No details available</p>';
+      let marketResearchHtml = '<p>No market research available</p>';
+      
+      if (this.item.appraisal?.details) {
+        try {
+          // Try multiple approaches to render markdown
+          if (typeof marked === 'function') {
+            // marked is a function in some versions
+            detailsHtml = marked(this.item.appraisal.details);
+          } else if (marked.parse) {
+            // marked.parse exists in some versions
+            detailsHtml = marked.parse(this.item.appraisal.details);
+          } else if (marked.marked) {
+            // marked.marked exists in some versions
+            detailsHtml = marked.marked(this.item.appraisal.details);
+          } else {
+            // Fallback to simple HTML
             detailsHtml = this.item.appraisal.details
               .replace(/\n/g, '<br>')
               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>');
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
+              .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
+              .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
           }
+        } catch (e) {
+          console.error('Error rendering details markdown:', e);
+          // Fallback to simple HTML conversion
+          detailsHtml = this.item.appraisal.details
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
         }
-        
-        if (this.item.appraisal?.marketResearch) {
-          try {
-            // Try multiple approaches to render markdown
-            if (typeof marked === 'function') {
-              // marked is a function in some versions
-              marketResearchHtml = marked(this.item.appraisal.marketResearch);
-            } else if (marked.parse) {
-              // marked.parse exists in some versions
-              marketResearchHtml = marked.parse(this.item.appraisal.marketResearch);
-            } else if (marked.marked) {
-              // marked.marked exists in some versions
-              marketResearchHtml = marked.marked(this.item.appraisal.marketResearch);
-            } else {
-              // Fallback to simple HTML
-              marketResearchHtml = this.item.appraisal.marketResearch
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
-                .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
-                .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
-            }
-          } catch (e) {
-            console.error('Error rendering market research markdown:', e);
-            // Fallback to simple HTML conversion
+      }
+      
+      if (this.item.appraisal?.marketResearch) {
+        try {
+          // Try multiple approaches to render markdown
+          if (typeof marked === 'function') {
+            // marked is a function in some versions
+            marketResearchHtml = marked(this.item.appraisal.marketResearch);
+          } else if (marked.parse) {
+            // marked.parse exists in some versions
+            marketResearchHtml = marked.parse(this.item.appraisal.marketResearch);
+          } else if (marked.marked) {
+            // marked.marked exists in some versions
+            marketResearchHtml = marked.marked(this.item.appraisal.marketResearch);
+          } else {
+            // Fallback to simple HTML
             marketResearchHtml = this.item.appraisal.marketResearch
               .replace(/\n/g, '<br>')
               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>');
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
+              .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
+              .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
           }
+        } catch (e) {
+          console.error('Error rendering market research markdown:', e);
+          // Fallback to simple HTML conversion
+          marketResearchHtml = this.item.appraisal.marketResearch
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
         }
-        
-        this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml(detailsHtml);
-        this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml(marketResearchHtml);
-        
-      } catch (error) {
-        console.error('Error in renderMarkdown method:', error);
-        // Provide fallback content if rendering fails
-        this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
-        this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
       }
-    } else {
-      console.warn('No item to render markdown for');
+      
+      this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml(detailsHtml);
+      this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml(marketResearchHtml);
+      
+    } catch (error) {
+      console.error('Error in renderMarkdown method:', error);
+      // Provide fallback content if rendering fails
+      this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
+      this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
     }
   }
   
   editAsAdmin(id: string): void {
+    if (!id) {
+      this.snackBar.open('Cannot edit: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
     this.router.navigate(['/admin/items/edit', id]);
   }
   
@@ -408,7 +436,7 @@ export class ItemDetailComponent implements OnInit {
     // Create a copy of the item with the updated images
     const updatedItem = {
       ...this.item,
-      imageUrl: this.item.imageUrl,
+      imageUrl: this.item.imageUrl || '',
       images: this.allImages.filter(img => img !== this.item?.imageUrl)
     };
     
@@ -426,6 +454,11 @@ export class ItemDetailComponent implements OnInit {
   }
 
   deleteItem(): void {
+    if (!this.item || !this.item._id) {
+      this.snackBar.open('Cannot delete: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '350px',
       data: {
@@ -437,9 +470,9 @@ export class ItemDetailComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result && this.item && this.item._id) {
+      if (result) {
         this.isDeleting = true;
-        this.showcaseService.deleteItem(this.item._id)
+        this.showcaseService.deleteItem(this.item!._id!)
           .pipe(
             finalize(() => this.isDeleting = false)
           )
