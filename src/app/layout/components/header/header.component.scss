@@ -12,6 +12,37 @@ mat-toolbar {
   align-items: center;
 }
 
+.toolbar-left-section {
+  display: flex;
+  align-items: center;
+}
+
+.menu-button {
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-title {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.user-name {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.user-button {
+  display: flex;
+  align-items: center;
+  
+  mat-icon {
+    margin-right: 8px;
+  }
+}
+
 button {
   margin-left: 8px;
 

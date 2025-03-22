@@ -74,6 +74,19 @@
           display: flex;
           align-items: center;
           padding: 0 8px;
+          
+          button {
+            margin: 0 2px;
+            
+            &[color="primary"] {
+              // Style for rotation buttons
+              background-color: rgba(0, 0, 0, 0.04);
+              
+              &:hover {
+                background-color: rgba(0, 0, 0, 0.08);
+              }
+            }
+          }
         }
       }
     }

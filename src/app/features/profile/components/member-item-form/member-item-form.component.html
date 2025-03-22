@@ -109,6 +109,12 @@
                 <img [src]="image.value" alt="Item image {{i+1}}">
               </div>
               <div class="image-actions">
+                <button type="button" mat-icon-button color="primary" (click)="rotateImage(i, 270)" matTooltip="Rotate left">
+                  <mat-icon>rotate_left</mat-icon>
+                </button>
+                <button type="button" mat-icon-button color="primary" (click)="rotateImage(i, 90)" matTooltip="Rotate right">
+                  <mat-icon>rotate_right</mat-icon>
+                </button>
                 <button type="button" mat-icon-button color="warn" (click)="removeImage(i)" matTooltip="Remove image">
                   <mat-icon>delete</mat-icon>
                 </button>

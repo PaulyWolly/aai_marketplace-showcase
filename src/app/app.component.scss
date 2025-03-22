@@ -12,6 +12,11 @@
   height: calc(100vh - 64px); // Subtract header height
 }
 
+.mdc-button .mdc-button__label {
+  position: relative;
+  font-size: 20px !important;
+}
+
 mat-sidenav {
   width: 250px;
   background-color: white;

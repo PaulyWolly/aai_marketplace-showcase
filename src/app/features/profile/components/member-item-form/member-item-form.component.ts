@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { AppraisalService, Appraisal } from '../../../appraisal/services/appraisal.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ImageCaptureDialogComponent } from '../../../../shared/components/image-capture-dialog/image-capture-dialog.component';
 import { environment } from '../../../../../environments/environment';
 
@@ -31,6 +32,7 @@ export class MemberItemFormComponent implements OnInit {
     private router: Router,
     private appraisalService: AppraisalService,
     private categoriesService: CategoriesService,
+    private authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {
@@ -78,6 +80,79 @@ export class MemberItemFormComponent implements OnInit {
     this.images.removeAt(index);
   }
 
+  /**
+   * Rotates an image at the specified index in the images FormArray
+   * @param index The index of the image to rotate
+   * @param degrees The number of degrees to rotate (90, 180, 270)
+   */
+  rotateImage(index: number, degrees: number): void {
+    if (index < 0 || index >= this.images.length) {
+      console.error(`Invalid image index: ${index}`);
+      return;
+    }
+    
+    this.snackBar.open('Rotating image...', '', { duration: 1000 });
+    
+    try {
+      const imageData = this.images.at(index).value;
+      if (!imageData) {
+        console.error('No image data to rotate');
+        return;
+      }
+      
+      // Create an image element to load the image
+      const img = new Image();
+      img.onload = () => {
+        // Create a canvas to draw the rotated image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          console.error('Failed to get canvas context');
+          return;
+        }
+        
+        // Set canvas dimensions based on rotation
+        if (degrees === 90 || degrees === 270) {
+          // Swap dimensions for 90 or 270 degree rotations
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+        
+        // Translate and rotate the canvas context
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((degrees * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        
+        // Convert back to data URL with same quality as createThumbnail
+        const rotatedImageData = canvas.toDataURL('image/jpeg', 0.7);
+        
+        // Update the FormArray with the rotated image
+        this.images.at(index).setValue(rotatedImageData);
+        
+        // Update the main image URL if this is the first image
+        if (index === 0 || this.images.length === 1) {
+          this.itemForm.get('imageUrl')?.setValue(rotatedImageData);
+        }
+        
+        this.snackBar.open('Image rotated successfully', 'Close', { duration: 2000 });
+      };
+      
+      img.onerror = (err) => {
+        console.error('Error loading image for rotation:', err);
+        this.snackBar.open('Failed to rotate image', 'Close', { duration: 3000 });
+      };
+      
+      img.src = imageData;
+    } catch (err) {
+      console.error('Error rotating image:', err);
+      this.snackBar.open('Error rotating image', 'Close', { duration: 3000 });
+    }
+  }
+
   async loadItem(id: string): Promise<void> {
     try {
       this.loading = true;
@@ -106,8 +181,8 @@ export class MemberItemFormComponent implements OnInit {
   }
 
   /**
-   * Drastically reduces image size to ensure it can be saved
-   * This creates a very small thumbnail to guarantee the save will work
+   * Reduces image size to ensure it can be saved while maintaining reasonable quality
+   * This creates a medium-sized image with better quality
    */
   private createThumbnail(dataUrl: string): Promise<string> {
     return new Promise((resolve) => {
@@ -128,8 +203,8 @@ export class MemberItemFormComponent implements OnInit {
           clearTimeout(timeout);
           
           try {
-            // Create a small thumbnail (50x50 max - even smaller to ensure it works)
-            const maxSize = 50;
+            // Create a medium-sized image (increased from 50 to 400px max)
+            const maxSize = 400;
             const canvas = document.createElement('canvas');
             
             // Calculate thumbnail dimensions
@@ -158,9 +233,9 @@ export class MemberItemFormComponent implements OnInit {
             // Draw the image
             ctx.drawImage(img, 0, 0, width, height);
             
-            // Convert to small JPEG with extremely low quality
-            const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.05);
-            console.log(`Created thumbnail: ${width}x${height}, size: ${thumbnailUrl.length} bytes`);
+            // Convert to JPEG with improved quality (increased from 0.05 to 0.7)
+            const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+            console.log(`Created image: ${width}x${height}, size: ${thumbnailUrl.length} bytes`);
             
             resolve(thumbnailUrl);
           } catch (err) {
@@ -321,6 +396,10 @@ export class MemberItemFormComponent implements OnInit {
             
             // Also include the image as imageUrl to ensure it's set in the database
             multipartFormData.append('imageUrl', formData.imageUrl || formData.images[0]);
+            
+            // Also include all images array as a JSON string to ensure it's saved in the database
+            multipartFormData.append('images', JSON.stringify(formData.images));
+            console.log(`Added all ${formData.images.length} images to form data as JSON array`);
           } catch (err) {
             console.error('Error converting image to blob:', err);
           }
@@ -387,115 +466,118 @@ export class MemberItemFormComponent implements OnInit {
    * Submit form data using multipart/form-data approach
    */
   private submitFormWithMultipart(formData: FormData): Promise<any> {
-    // Build the URL to submit the form to
-    const baseUrl = `${environment.apiUrl}/appraisals`;
+    // Log form data for debugging
+    console.log('Submitting with multipart form data');
+    // We can't easily log keys from FormData in a type-safe way, so we'll skip that
     
-    // Always use the base URL for the first attempt
-    // This now supports multipart form data uploads
-    const url = baseUrl;
-      
-    // Log the URL being used
-    console.log(`Submitting form to: ${url} using ${this.isEditMode ? 'PUT' : 'POST'} method`);
-    
-    // Verify formData contents
-    formData.forEach((value, key) => {
-      if (key !== 'image') {
-        console.log(`${key}: ${value}`);
-      } else {
-        console.log(`${key}: [blob data]`);
-      }
-    });
-    
-    // Set the method based on whether we're in edit mode
-    // If edit mode, we'll use PUT to the /:id endpoint
-    // Otherwise, we'll use POST to the base endpoint
-    const method = this.isEditMode ? 'PUT' : 'POST';
-    
-    // Capture reference to router and snackBar for use inside Promise
+    // Capture references to use inside the Promise
     const router = this.router;
     const snackBar = this.snackBar;
+    const itemId = this.itemId;
+    const editMode = this.isEditMode;
+    const authService = this.authService;
     
-    return new Promise((resolve, reject) => {
-      const tryRequest = (endpointUrl: string, actualMethod: string) => {
-        console.log(`Trying endpoint: ${endpointUrl} with method: ${actualMethod}`);
+    return new Promise<any>((resolve, reject) => {
+      // Construct URL
+      let url = `${environment.apiUrl}/appraisals`;
+      
+      // For edit mode, include the itemId in the URL path and not in the formData as '_id'
+      if (editMode && itemId) {
+        // Use /:id pattern for MongoDB ObjectId path parameter
+        url = `${environment.apiUrl}/appraisals/${itemId}`;
         
-        // For PUT requests with ID, append the ID to the URL
-        const finalUrl = actualMethod === 'PUT' && this.itemId ? 
-          `${endpointUrl}/${this.itemId}` : endpointUrl;
-          
-        console.log(`Final request URL: ${finalUrl}`);
-        
-        const xhr = new XMLHttpRequest();
-        xhr.open(actualMethod, finalUrl);
-        
-        // Add auth token - CRITICAL for authentication
-        const token = localStorage.getItem('token');
-        if (token) {
-          console.log('Setting Authorization header with token:', token.substring(0, 10) + '...');
-          
-          // IMPORTANT: Set Authorization header with 'Bearer ' prefix
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          
-          // Also set content type explicitly for multipart forms
-          // Note: Do NOT set content-type for multipart/form-data as it will be set automatically with boundary
+        // Debug log the constructed URL
+        console.log(`Edit mode URL with itemId: ${url}`);
+      }
+      
+      console.log('Submitting to URL:', url);
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open(editMode ? 'PUT' : 'POST', url);
+      
+      // Set auth headers
+      const token = authService.getToken();
+      if (token) {
+        console.log('Setting Authorization header with token');
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      } else {
+        console.error('No token available for authentication');
+        this.error = 'Authentication failed - please log in again';
+        this.loading = false;
+        reject(new Error('No authentication token available'));
+        return;
+      }
+      
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('XHR success response:', xhr.responseText);
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (err) {
+            console.error('Error parsing response:', err);
+            reject(err);
+          }
         } else {
-          console.error('No token found in localStorage! Authentication will fail.');
-          snackBar.open('Authentication token not found. Please log in again.', 'Close', { duration: 5000 });
-          router.navigate(['/login']);
-          reject(new Error('Authentication token not found'));
-          return;
-        }
-        
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              console.log('Request successful:', xhr.status, xhr.statusText);
-              resolve(response);
-            } catch (err) {
-              console.log('Response is not JSON but request succeeded');
-              resolve(xhr.responseText);
-            }
-          } else if (xhr.status === 404) {
+          console.error(`Server error: ${xhr.status} ${xhr.statusText}`, xhr.responseText);
+          
+          // Special handling for 404 - try fallback
+          if (xhr.status === 404) {
             // If 404, try the /save endpoint as a fallback
             console.log('404 received, trying /save endpoint as fallback');
-            tryRequest(`${baseUrl}/save`, 'POST');
+            const fallbackUrl = `${environment.apiUrl}/appraisals/save`;
+            console.log('Trying fallback URL:', fallbackUrl);
+            
+            const fallbackXhr = new XMLHttpRequest();
+            fallbackXhr.open('POST', fallbackUrl);
+            if (token) {
+              fallbackXhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            }
+            
+            // For fallback, include _id in formData
+            if (editMode && itemId) {
+              formData.append('_id', itemId);
+            }
+            
+            fallbackXhr.onload = function() {
+              if (fallbackXhr.status >= 200 && fallbackXhr.status < 300) {
+                console.log('Fallback XHR success response:', fallbackXhr.responseText);
+                try {
+                  const response = JSON.parse(fallbackXhr.responseText);
+                  resolve(response);
+                } catch (err) {
+                  console.error('Error parsing fallback response:', err);
+                  reject(err);
+                }
+              } else {
+                console.error(`Fallback server error: ${fallbackXhr.status}`, fallbackXhr.responseText);
+                reject(new Error(`Server returned ${fallbackXhr.status}: ${fallbackXhr.statusText}`));
+              }
+            };
+            
+            fallbackXhr.onerror = function() {
+              console.error('Fallback XHR network error');
+              reject(new Error('Network error occurred during fallback request'));
+            };
+            
+            fallbackXhr.send(formData);
           } else if (xhr.status === 401) {
             console.error('Authentication failed! Token may be invalid or expired.');
-            console.error('Response:', xhr.responseText);
-            // Redirect to login page
-            snackBar.open('Your session has expired. Please log in again.', 'Close', { duration: 5000 });
+            snackBar.open('Authentication failed. Please log in again.', 'Close', { duration: 5000 });
             router.navigate(['/login']);
-            reject(new Error(`Authentication failed: ${xhr.responseText}`));
+            reject(new Error('Authentication failed'));
           } else {
-            console.error(`Server error: ${xhr.status} ${xhr.statusText}`);
-            console.error(`Response: ${xhr.responseText}`);
             reject(new Error(`Server returned ${xhr.status}: ${xhr.statusText}`));
           }
-        };
-        
-        xhr.onerror = (event) => {
-          console.error('Network error:', event);
-          
-          // If the direct endpoint fails, try the fallback
-          if (!endpointUrl.includes('/save')) {
-            console.log('Network error received, trying /save endpoint as fallback');
-            tryRequest(`${baseUrl}/save`, 'POST');
-          } else {
-            reject(new Error('Network error occurred'));
-          }
-        };
-        
-        try {
-          xhr.send(formData);
-        } catch (err) {
-          console.error('Error sending form data:', err);
-          reject(err);
         }
       };
       
-      // Start with the primary endpoint and method
-      tryRequest(url, method);
+      xhr.onerror = function() {
+        console.error('XHR network error');
+        reject(new Error('Network error occurred'));
+      };
+      
+      xhr.send(formData);
     });
   }
   
@@ -503,19 +585,36 @@ export class MemberItemFormComponent implements OnInit {
    * Convert base64 data URL to Blob
    */
   private dataURLtoBlob(dataUrl: string): Blob {
-    // Split the data URL to get the base64 data
-    const parts = dataUrl.split(';base64,');
-    const contentType = parts[0].split(':')[1] || 'image/jpeg';
-    const raw = window.atob(parts[1]);
-    const rawLength = raw.length;
-    
-    // Create array buffer
-    const uInt8Array = new Uint8Array(rawLength);
-    for (let i = 0; i < rawLength; ++i) {
-      uInt8Array[i] = raw.charCodeAt(i);
+    try {
+      // Check if the dataUrl is valid
+      if (!dataUrl || !dataUrl.includes(';base64,')) {
+        console.warn('Invalid data URL format, using fallback empty blob');
+        return new Blob([], { type: 'image/jpeg' });
+      }
+      
+      // Split the data URL to get the base64 data
+      const parts = dataUrl.split(';base64,');
+      const contentType = parts[0].split(':')[1] || 'image/jpeg';
+      
+      try {
+        const raw = window.atob(parts[1]);
+        const rawLength = raw.length;
+        
+        // Create array buffer
+        const uInt8Array = new Uint8Array(rawLength);
+        for (let i = 0; i < rawLength; ++i) {
+          uInt8Array[i] = raw.charCodeAt(i);
+        }
+        
+        return new Blob([uInt8Array], { type: contentType });
+      } catch (atobError) {
+        console.error('Error decoding base64 data:', atobError);
+        return new Blob([], { type: 'image/jpeg' });
+      }
+    } catch (err) {
+      console.error('Critical error in dataURLtoBlob:', err);
+      return new Blob([], { type: 'image/jpeg' });
     }
-    
-    return new Blob([uInt8Array], { type: contentType });
   }
 
   onCancel(): void {
@@ -563,9 +662,12 @@ export class MemberItemFormComponent implements OnInit {
                 console.log('Received image data from camera dialog:', result.imageData.substring(0, 50) + '...');
                 
                 try {
-                  // Create a thumbnail of the camera image
+                  // Show loading indicator
+                  this.snackBar.open('Processing camera image...', '', { duration: 2000 });
+                  
+                  // Create a thumbnail of the camera image - same process as file upload
                   this.createThumbnail(result.imageData).then(thumbnailUrl => {
-                    console.log(`Created thumbnail from camera image, size: ${thumbnailUrl.length} bytes`);
+                    console.log(`Created image from camera: ${thumbnailUrl.length} bytes`);
                     
                     // Add the image to the form array
                     this.addImage(thumbnailUrl);
@@ -574,7 +676,7 @@ export class MemberItemFormComponent implements OnInit {
                     // If this is the first image, set it as the main image
                     if (this.images.length === 1 || !this.itemForm.get('imageUrl')?.value) {
                       this.itemForm.get('imageUrl')?.setValue(thumbnailUrl);
-                      console.log('Set as main image URL');
+                      console.log('Set camera image as main image URL');
                     }
                     
                     // Update the form data directly
@@ -583,9 +685,15 @@ export class MemberItemFormComponent implements OnInit {
                     });
                     
                     // Show success message
-                    this.snackBar.open('Photo added successfully', 'Close', { duration: 3000 });
+                    this.snackBar.open('Camera photo added successfully', 'Close', { duration: 3000 });
+                    
+                    // Immediately save the image to the server if we already have other form data filled
+                    if (this.itemForm.valid && this.isEditMode) {
+                      console.log('Form is valid and in edit mode - auto-saving image');
+                      this.onSubmit();
+                    }
                   }).catch(err => {
-                    console.error('Error creating thumbnail from camera image:', err);
+                    console.error('Error creating image from camera:', err);
                     this.snackBar.open('Error processing photo. Please try again.', 'Close', { duration: 5000 });
                   });
                 } catch (err) {
@@ -617,53 +725,46 @@ export class MemberItemFormComponent implements OnInit {
    * @returns true if authenticated, false otherwise
    */
   private checkAuthentication(): boolean {
-    const token = localStorage.getItem('token');
+    const token = this.authService.getToken();
+    console.log('Authentication check - Token exists:', !!token);
+    
     if (!token) {
-      console.error('No authentication token found in localStorage');
+      console.error('User must be logged in to submit an item');
+      this.error = 'You must be logged in to submit an item';
+      this.loading = false;
+      this.snackBar.open('Please log in to save your item', 'Close', {
+        duration: 5000,
+        panelClass: ['error-snackbar']
+      });
       return false;
     }
-    
-    // If we have a token, consider the user authenticated
-    // The server will validate the token properly
-    console.log('Authentication token found in localStorage');
     return true;
   }
   
   // Private helper to log token information for debugging
   private logToken(): void {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No token found in localStorage');
-      return;
-    }
-    
-    console.log('Token exists in localStorage, length:', token.length);
-    console.log('Token starts with:', token.substring(0, 20) + '...');
-    
-    try {
-      // Try to decode token parts
+    const token = this.authService.getToken();
+    console.log('Token exists:', !!token);
+    if (token) {
+      console.log('Token length:', token.length);
       const parts = token.split('.');
-      if (parts.length !== 3) {
-        console.error('Token does not have 3 parts (malformed JWT)');
-        return;
+      console.log('Token has expected format (3 parts):', parts.length === 3);
+      
+      // Check expiration if it's a JWT
+      if (parts.length === 3) {
+        try {
+          const payload = JSON.parse(atob(parts[1]));
+          const expTime = payload.exp * 1000; // Convert to milliseconds
+          const currentTime = Date.now();
+          console.log('Token expiration:', new Date(expTime).toLocaleString());
+          console.log('Current time:', new Date(currentTime).toLocaleString());
+          console.log('Token expired:', expTime < currentTime);
+        } catch (e) {
+          console.error('Error parsing token payload:', e);
+        }
       }
-      
-      const header = JSON.parse(atob(parts[0]));
-      console.log('Token header:', header);
-      
-      const payload = JSON.parse(atob(parts[1]));
-      console.log('Token payload:', payload);
-      
-      // Check expiration
-      if (payload.exp) {
-        const expDate = new Date(payload.exp * 1000);
-        const now = new Date();
-        console.log('Token expires:', expDate);
-        console.log('Current time:', now);
-        console.log('Token is', expDate > now ? 'still valid' : 'EXPIRED');
-      }
-    } catch (e) {
-      console.error('Error parsing token:', e);
+    } else {
+      console.log('Token is not available');
     }
   }
   
