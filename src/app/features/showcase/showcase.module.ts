@@ -26,6 +26,10 @@ const routes: Routes = [
     component: ShowcaseComponent
   },
   {
+    path: 'user/:userId',
+    component: ShowcaseComponent
+  },
+  {
     path: 'item/:id',
     component: ItemDetailComponent
   }

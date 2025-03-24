@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const config = require('./config');
-const User = require('./models/User');
+const config = require('../config');
+const User = require('../models/User');
 
 // New admin password
 const NEW_PASSWORD = 'admin123';

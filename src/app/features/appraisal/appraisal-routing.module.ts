@@ -4,6 +4,7 @@ import { AuthGuard } from '../../core/guards/auth.guard';
 import { AppraisalCaptureComponent } from './components/appraisal-capture/appraisal-capture.component';
 import { AppraisalResultsComponent } from './components/appraisal-results/appraisal-results.component';
 import { AppraisalHistoryComponent } from './components/appraisal-history/appraisal-history.component';
+import { WebAppraisalComponent } from './components/web-appraisal/web-appraisal.component';
 
 const routes: Routes = [
   {
@@ -29,6 +30,12 @@ const routes: Routes = [
         path: 'view/:id',
         component: AppraisalResultsComponent,
         canActivate: [AuthGuard]
+      },
+      {
+        path: 'web',
+        component: WebAppraisalComponent,
+        canActivate: [AuthGuard],
+        data: { title: 'Web Appraisal' }
       }
     ]
   }

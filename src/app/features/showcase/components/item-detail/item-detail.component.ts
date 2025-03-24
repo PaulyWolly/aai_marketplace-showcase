@@ -42,6 +42,7 @@ export class ItemDetailComponent implements OnInit {
   renderedDetails: SafeHtml | null = null;
   renderedMarketResearch: SafeHtml | null = null;
   isAdmin = false;
+  isOwner = false;
   isDeleting = false;
   
   constructor(
@@ -58,6 +59,7 @@ export class ItemDetailComponent implements OnInit {
   ngOnInit(): void {
     this.loadItem();
     this.checkAdminStatus();
+    this.checkOwnerStatus();
   }
 
   private checkAdminStatus(): void {
@@ -66,75 +68,86 @@ export class ItemDetailComponent implements OnInit {
     });
   }
 
-  async loadItem(): Promise<void> {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) {
-      this.error = 'Item ID is missing';
-      return;
-    }
-
-    console.log('Loading item with ID:', id);
+  private checkOwnerStatus(): void {
+    // Get the current user
+    const currentUser = this.authService.getCurrentUser();
     
+    // Check if user is logged in and matches the item owner
+    if (currentUser && this.item && this.item.userId) {
+      // Check if the current user is the owner of this item
+      this.isOwner = currentUser._id === this.item.userId;
+      console.log('Current user is owner:', this.isOwner);
+    } else {
+      this.isOwner = false;
+    }
+  }
+
+  async loadItem(): Promise<void> {
     try {
       this.loading = true;
       this.error = null;
       
-      // Add a timeout to prevent hanging requests
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000);
-      });
+      const id = this.route.snapshot.paramMap.get('id');
+      if (!id) {
+        this.error = 'Item ID not found';
+        this.loading = false;
+        return;
+      }
       
-      // Race the item loading against the timeout
-      const item = await Promise.race([
-        this.showcaseService.getItemById(id),
-        timeoutPromise
-      ]);
-      
-      console.log('Item loaded:', item);
+      console.log('Loading item with ID:', id);
+      const item = await this.showcaseService.getItemById(id);
       
       if (item) {
         this.item = item;
+        console.log('Item loaded successfully:', this.item);
         
-        // Ensure we have basic data even if some fields are missing
-        if (!this.item.name) this.item.name = 'Unnamed Item';
-        if (!this.item.category) this.item.category = 'Uncategorized';
-        if (!this.item.condition) this.item.condition = 'Unknown';
-        if (!this.item.estimatedValue) this.item.estimatedValue = 'Not Appraised';
+        // Log information about images
+        console.log('Main imageUrl:', this.item?.imageUrl);
+        console.log('Additional images array:', this.item?.images);
         
-        // Initialize appraisal object if it doesn't exist
-        if (!this.item.appraisal) {
-          this.item.appraisal = {
-            details: 'No details available',
-            marketResearch: 'No market research available'
-          };
+        // Set up the image gallery
+        this.setupImageGallery();
+        
+        // Log the allImages array after setup 
+        console.log('All images after setup:', this.allImages);
+        
+        // Check if the main image is actually an array (which can cause errors)
+        if (this.item && Array.isArray(this.item.imageUrl)) {
+          console.warn('imageUrl is an array - fixing by using the first element');
+          this.item.imageUrl = this.item.imageUrl.length > 0 ? this.item.imageUrl[0] : '';
         }
         
-        this.setupImageGallery();
+        // Render markdown for appraisal details
         this.renderMarkdown();
         
-        // Load the member's information
-        if (item.userId) {
-          this.loadMemberInfo(item.userId);
+        // For member-uploaded items, try to load member info
+        if (this.item?.userId) {
+          this.loadMemberInfo(this.item.userId);
         }
+        
+        // Check if current user is the owner
+        this.checkOwnerStatus();
       } else {
         this.error = 'Item not found';
-        console.error('Item not found for ID:', id);
       }
     } catch (err) {
-      console.error('Error loading item details:', err);
+      console.error('Error loading item:', err);
+      this.error = 'Failed to load item details';
       if (err instanceof Error) {
-        this.error = err.message || 'Failed to load item details';
-      } else {
-        this.error = 'Failed to load item details';
+        this.error += `: ${err.message}`;
       }
     } finally {
       this.loading = false;
     }
   }
   
-  loadMemberInfo(userId: string): void {
-    this.memberLoading = true;
+  loadMemberInfo(userId?: string): void {
+    if (!userId) {
+      if (!this.item || !this.item.userId) return;
+      userId = this.item.userId;
+    }
     
+    this.memberLoading = true;
     this.authService.getBasicUserInfo(userId).subscribe({
       next: (user) => {
         if (this.item && user) {
@@ -171,54 +184,117 @@ export class ItemDetailComponent implements OnInit {
   }
 
   setupImageGallery(): void {
-    console.log('Setting up image gallery for item:', this.item);
+    console.log('====== SETTING UP IMAGE GALLERY ======');
     
     if (!this.item) {
       console.warn('No item available for image gallery setup');
+      this.allImages = ['assets/images/placeholder.jpg'];
+      this.currentImageIndex = 0;
       return;
     }
     
     try {
+      // Initialize empty array for all images and set for tracking duplicates
       this.allImages = [];
+      const seenUrls = new Set<string>();
       
-      // Add the main image
-      if (this.item.imageUrl) {
-        console.log('Adding main image:', this.item.imageUrl);
+      // First add the main image if it exists
+      if (this.item.imageUrl && typeof this.item.imageUrl === 'string' && this.item.imageUrl.trim() !== '') {
+        console.log('Adding main imageUrl to gallery:', this.item.imageUrl);
         this.allImages.push(this.item.imageUrl);
+        seenUrls.add(this.item.imageUrl);
+      } else if (Array.isArray(this.item.imageUrl)) {
+        // Handle case where imageUrl is incorrectly an array
+        console.warn('Main imageUrl is incorrectly an array - fixing by using first element');
+        const firstImage = this.item.imageUrl.length > 0 ? this.item.imageUrl[0] : '';
+        if (firstImage && typeof firstImage === 'string' && firstImage.trim() !== '') {
+          this.allImages.push(firstImage);
+          seenUrls.add(firstImage);
+          this.item.imageUrl = firstImage; // Update the item's imageUrl
+        }
       }
       
-      // Add additional images if available, but avoid duplicates
+      // Then add all images from the images array, skipping duplicates
       if (this.item.images && Array.isArray(this.item.images)) {
-        console.log('Processing additional images:', this.item.images);
+        console.log('Processing additional images array, length:', this.item.images.length);
         
-        // Filter out duplicates and null/undefined values
-        const additionalImages = this.item.images.filter(img => 
-          img && // Filter out null/undefined
-          img !== this.item?.imageUrl && // Filter out main image
-          !this.allImages.includes(img) // Filter out any duplicates already in allImages
-        );
-        
-        console.log('Filtered additional images:', additionalImages);
-        this.allImages = [...this.allImages, ...additionalImages];
+        this.item.images.forEach((imgUrl, index) => {
+          // Skip empty/null images
+          if (!imgUrl || typeof imgUrl !== 'string' || imgUrl.trim() === '') {
+            console.log(`Skipping empty image at index ${index}`);
+            return;
+          }
+          
+          // Skip duplicates by checking against the seen URLs set
+          if (seenUrls.has(imgUrl)) {
+            console.log(`Skipping duplicate image at index ${index}: ${imgUrl}`);
+            return;
+          }
+          
+          // Add image to gallery and track it
+          this.allImages.push(imgUrl);
+          seenUrls.add(imgUrl);
+          console.log(`Added image from array at index ${index}: ${imgUrl}`);
+        });
+      } else {
+        console.log('No additional images array found or it is not an array');
       }
       
-      // Reset the current image index
+      // Add a placeholder if no images were found
+      if (this.allImages.length === 0) {
+        console.log('No images found, adding placeholder');
+        this.allImages.push('assets/images/placeholder.jpg');
+      }
+      
+      // Reset current image index
       this.currentImageIndex = 0;
       
-      console.log('Image gallery setup complete. Total images:', this.allImages.length);
+      // Log final gallery setup
+      console.log('Final image gallery contains', this.allImages.length, 'images:');
+      this.allImages.forEach((img, i) => console.log(`[${i}] ${img}`));
     } catch (error) {
       console.error('Error setting up image gallery:', error);
+      // Fallback to placeholder
+      this.allImages = ['assets/images/placeholder.jpg'];
+      this.currentImageIndex = 0;
     }
   }
   
   get currentImage(): string {
-    return this.allImages[this.currentImageIndex] || '';
+    if (!this.allImages || this.allImages.length === 0) {
+      return 'assets/images/placeholder.jpg';
+    }
+    return this.allImages[this.currentImageIndex];
   }
   
   selectImage(index: number): void {
     if (index >= 0 && index < this.allImages.length) {
       this.currentImageIndex = index;
+      console.log(`Selected image at index ${index}:`, this.allImages[index]);
     }
+  }
+  
+  makeMainImage(index: number): void {
+    if (!this.item || index < 0 || index >= this.allImages.length) {
+      return;
+    }
+    
+    const newMainImageUrl = this.allImages[index];
+    console.log(`Setting image at index ${index} as main image:`, newMainImageUrl);
+    
+    // Update the imageUrl in the item object
+    this.item.imageUrl = newMainImageUrl;
+    
+    // Make sure allImages is updated if needed
+    if (this.currentImageIndex !== index) {
+      this.selectImage(index);
+    }
+    
+    // Show feedback to user
+    this.snackBar.open('Main image updated', 'Close', { duration: 2000 });
+    
+    // Save the changes to the server
+    this.saveItemChanges();
   }
   
   nextImage(): void {
@@ -244,91 +320,98 @@ export class ItemDetailComponent implements OnInit {
   renderMarkdown(): void {
     console.log('Rendering markdown for item:', this.item);
     
-    if (this.item) {
-      try {
-        // Simple fallback text if markdown rendering fails
-        let detailsHtml = '<p>No details available</p>';
-        let marketResearchHtml = '<p>No market research available</p>';
-        
-        if (this.item.appraisal?.details) {
-          try {
-            // Try multiple approaches to render markdown
-            if (typeof marked === 'function') {
-              // marked is a function in some versions
-              detailsHtml = marked(this.item.appraisal.details);
-            } else if (marked.parse) {
-              // marked.parse exists in some versions
-              detailsHtml = marked.parse(this.item.appraisal.details);
-            } else if (marked.marked) {
-              // marked.marked exists in some versions
-              detailsHtml = marked.marked(this.item.appraisal.details);
-            } else {
-              // Fallback to simple HTML
-              detailsHtml = this.item.appraisal.details
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
-                .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
-                .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
-            }
-          } catch (e) {
-            console.error('Error rendering details markdown:', e);
-            // Fallback to simple HTML conversion
+    if (!this.item) {
+      console.warn('No item to render markdown for');
+      this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml('<p>No details available</p>');
+      this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml('<p>No market research available</p>');
+      return;
+    }
+
+    try {
+      // Simple fallback text if markdown rendering fails
+      let detailsHtml = '<p>No details available</p>';
+      let marketResearchHtml = '<p>No market research available</p>';
+      
+      if (this.item.appraisal?.details) {
+        try {
+          // Try multiple approaches to render markdown
+          if (typeof marked === 'function') {
+            // marked is a function in some versions
+            detailsHtml = marked(this.item.appraisal.details);
+          } else if (marked.parse) {
+            // marked.parse exists in some versions
+            detailsHtml = marked.parse(this.item.appraisal.details);
+          } else if (marked.marked) {
+            // marked.marked exists in some versions
+            detailsHtml = marked.marked(this.item.appraisal.details);
+          } else {
+            // Fallback to simple HTML
             detailsHtml = this.item.appraisal.details
               .replace(/\n/g, '<br>')
               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>');
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
+              .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
+              .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
           }
+        } catch (e) {
+          console.error('Error rendering details markdown:', e);
+          // Fallback to simple HTML conversion
+          detailsHtml = this.item.appraisal.details
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
         }
-        
-        if (this.item.appraisal?.marketResearch) {
-          try {
-            // Try multiple approaches to render markdown
-            if (typeof marked === 'function') {
-              // marked is a function in some versions
-              marketResearchHtml = marked(this.item.appraisal.marketResearch);
-            } else if (marked.parse) {
-              // marked.parse exists in some versions
-              marketResearchHtml = marked.parse(this.item.appraisal.marketResearch);
-            } else if (marked.marked) {
-              // marked.marked exists in some versions
-              marketResearchHtml = marked.marked(this.item.appraisal.marketResearch);
-            } else {
-              // Fallback to simple HTML
-              marketResearchHtml = this.item.appraisal.marketResearch
-                .replace(/\n/g, '<br>')
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
-                .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
-                .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
-            }
-          } catch (e) {
-            console.error('Error rendering market research markdown:', e);
-            // Fallback to simple HTML conversion
+      }
+      
+      if (this.item.appraisal?.marketResearch) {
+        try {
+          // Try multiple approaches to render markdown
+          if (typeof marked === 'function') {
+            // marked is a function in some versions
+            marketResearchHtml = marked(this.item.appraisal.marketResearch);
+          } else if (marked.parse) {
+            // marked.parse exists in some versions
+            marketResearchHtml = marked.parse(this.item.appraisal.marketResearch);
+          } else if (marked.marked) {
+            // marked.marked exists in some versions
+            marketResearchHtml = marked.marked(this.item.appraisal.marketResearch);
+          } else {
+            // Fallback to simple HTML
             marketResearchHtml = this.item.appraisal.marketResearch
               .replace(/\n/g, '<br>')
               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-              .replace(/\*(.*?)\*/g, '<em>$1</em>');
+              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+              .replace(/#{3}(.*?)\n/g, '<h3>$1</h3>')
+              .replace(/#{2}(.*?)\n/g, '<h2>$1</h2>')
+              .replace(/#{1}(.*?)\n/g, '<h1>$1</h1>');
           }
+        } catch (e) {
+          console.error('Error rendering market research markdown:', e);
+          // Fallback to simple HTML conversion
+          marketResearchHtml = this.item.appraisal.marketResearch
+            .replace(/\n/g, '<br>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
         }
-        
-        this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml(detailsHtml);
-        this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml(marketResearchHtml);
-        
-      } catch (error) {
-        console.error('Error in renderMarkdown method:', error);
-        // Provide fallback content if rendering fails
-        this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
-        this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
       }
-    } else {
-      console.warn('No item to render markdown for');
+      
+      this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml(detailsHtml);
+      this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml(marketResearchHtml);
+      
+    } catch (error) {
+      console.error('Error in renderMarkdown method:', error);
+      // Provide fallback content if rendering fails
+      this.renderedDetails = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
+      this.renderedMarketResearch = this.sanitizer.bypassSecurityTrustHtml('<p>Error rendering content</p>');
     }
   }
   
   editAsAdmin(id: string): void {
+    if (!id) {
+      this.snackBar.open('Cannot edit: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
     this.router.navigate(['/admin/items/edit', id]);
   }
   
@@ -395,37 +478,84 @@ export class ItemDetailComponent implements OnInit {
     });
   }
 
-  // New method to save item changes to the server
-  private saveItemChanges(): void {
+  // Save item changes to the server
+  saveItemChanges(): void {
     if (!this.item || !this.item._id) {
-      this.snackBar.open('Failed to save changes: Item ID is missing', 'Close', { duration: 3000 });
+      this.snackBar.open('Failed to save: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Check if user has permission to edit (admin or owner)
+    if (!this.isAdmin && !this.isOwner) {
+      this.snackBar.open('You do not have permission to update this item', 'Close', { duration: 3000 });
       return;
     }
 
     // Show loading indicator
     const loadingSnackBarRef = this.snackBar.open('Saving changes...', '', { duration: 0 });
     
-    // Create a copy of the item with the updated images
+    // Create a complete copy of the item for saving
+    // This ensures we preserve all fields, not just images
     const updatedItem = {
       ...this.item,
-      imageUrl: this.item.imageUrl,
-      images: this.allImages.filter(img => img !== this.item?.imageUrl)
+      _id: this.item._id,
+      imageUrl: this.item.imageUrl || '',
+      images: [...this.allImages],
+      
+      // Ensure appraisal data is included
+      appraisal: {
+        ...(this.item.appraisal || {}),
+        details: this.item.appraisal?.details || '',
+        marketResearch: this.item.appraisal?.marketResearch || ''
+      },
+      
+      // Include other important fields explicitly
+      name: this.item.name || '',
+      category: this.item.category || '',
+      condition: this.item.condition || '',
+      estimatedValue: this.item.estimatedValue || '',
+      height: this.item.height || '',
+      width: this.item.width || '',
+      weight: this.item.weight || ''
     };
+    
+    console.log('Saving updated item:');
+    console.log('- Main imageUrl:', updatedItem.imageUrl);
+    console.log('- Images array:', updatedItem.images);
+    console.log('- Appraisal details:', updatedItem.appraisal.details ? 'Present' : 'Missing');
+    console.log('- Appraisal market research:', updatedItem.appraisal.marketResearch ? 'Present' : 'Missing');
     
     // Save to server using the AppraisalService
     this.appraisalService.saveAppraisal(updatedItem)
-      .then(() => {
+      .then((response) => {
         loadingSnackBarRef.dismiss();
-        this.snackBar.open('Image removed successfully', 'Close', { duration: 3000 });
+        this.snackBar.open('Changes saved successfully', 'Close', { duration: 3000 });
+        
+        // Clear the showcase cache for this item 
+        if (this.item && this.item._id) {
+          console.log('Clearing showcase cache for item:', this.item._id);
+          this.showcaseService.clearCacheForItem(this.item._id);
+        }
+        
+        // Reload the item to ensure we have the latest data
+        this.loadItem();
+        
+        // Log successful save
+        console.log('Item successfully updated:', response);
       })
       .catch((error: Error) => {
         loadingSnackBarRef.dismiss();
         console.error('Error saving item changes:', error);
-        this.snackBar.open('Failed to save changes. The image will reappear on refresh.', 'Close', { duration: 5000 });
+        this.snackBar.open('Failed to save changes. Please try again.', 'Close', { duration: 5000 });
       });
   }
 
   deleteItem(): void {
+    if (!this.item || !this.item._id) {
+      this.snackBar.open('Cannot delete: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '350px',
       data: {
@@ -437,9 +567,9 @@ export class ItemDetailComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe(result => {
-      if (result && this.item && this.item._id) {
+      if (result) {
         this.isDeleting = true;
-        this.showcaseService.deleteItem(this.item._id)
+        this.showcaseService.deleteItem(this.item!._id!)
           .pipe(
             finalize(() => this.isDeleting = false)
           )
@@ -459,5 +589,89 @@ export class ItemDetailComponent implements OnInit {
           });
       }
     });
+  }
+
+  // Add a method to reload the current item data
+  refreshItem(): void {
+    // Get the item ID from the route params
+    const id = this.route.snapshot.paramMap.get('id');
+    
+    if (id) {
+      // Show loading indicator
+      this.loading = true;
+      this.error = null;
+      
+      // Clear the item from cache
+      if (this.showcaseService['clearCacheForItem']) {
+        console.log('Clearing cache for item:', id);
+        this.showcaseService['clearCacheForItem'](id);
+      }
+      
+      // Reset the images array
+      this.allImages = [];
+      this.currentImageIndex = 0;
+      
+      // Display a snackbar message
+      this.snackBar.open('Refreshing item data...', '', { duration: 2000 });
+      
+      // Reload the item
+      this.loadItem();
+    }
+  }
+
+  /**
+   * Refreshes just the image gallery without reloading the entire item
+   * Useful after adding/removing/changing images
+   */
+  refreshImageGallery(): void {
+    if (!this.item) return;
+    
+    // Save current image index if possible
+    const currentImage = this.allImages[this.currentImageIndex];
+    
+    // Rebuild the image gallery
+    this.setupImageGallery();
+    
+    // Try to restore the previous image selection
+    if (currentImage && this.allImages.includes(currentImage)) {
+      this.currentImageIndex = this.allImages.indexOf(currentImage);
+    }
+    
+    // Show confirmation to user
+    this.snackBar.open('Image gallery refreshed', 'Close', { duration: 2000 });
+  }
+
+  /**
+   * Shows the image at the specified index
+   * @param index The index of the image to show
+   */
+  showImage(index: number): void {
+    if (this.allImages && index >= 0 && index < this.allImages.length) {
+      this.currentImageIndex = index;
+      console.log(`Showing image at index ${index}: ${this.allImages[index]}`);
+    }
+  }
+  
+  /**
+   * Handle double-click on an image to set it as the main image
+   * @param index Index of the image in the gallery
+   */
+  onImageDoubleClick(index: number): void {
+    this.makeMainImage(index);
+  }
+
+  /**
+   * Alias for makeMainImage to use a more descriptive name
+   * @param index Index of the image in the gallery to set as main
+   */
+  selectAsMainImage(index: number): void {
+    this.makeMainImage(index);
+  }
+
+  /**
+   * Alias for previousImage to provide consistent naming
+   */
+  prevImage(): void {
+    this.previousImage();
   }
 } 

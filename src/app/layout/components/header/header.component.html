@@ -1,9 +1,11 @@
 <mat-toolbar color="primary">
-  <button mat-icon-button (click)="toggleMenu()">
-    <mat-icon>menu</mat-icon>
-  </button>
+  <div class="toolbar-left-section">
+    <button mat-icon-button (click)="toggleMenu()" class="menu-button">
+      <mat-icon>menu</mat-icon>
+    </button>
   
-  <span>AAI - Appraise An Item</span>
+    <span class="app-title">AAI - Appraise An Item</span>
+  </div>
   
   <span class="spacer"></span>
   
@@ -13,9 +15,9 @@
   </ng-container>
 
   <ng-container *ngIf="authService.isAuthenticated$ | async">
-    <button mat-button [matMenuTriggerFor]="userMenu">
+    <button mat-button [matMenuTriggerFor]="userMenu" class="user-button">
       <mat-icon>account_circle</mat-icon>
-      {{ (authService.user$ | async)?.firstName }}
+      <span class="user-name">{{ (authService.user$ | async)?.firstName }}</span>
     </button>
     <mat-menu #userMenu="matMenu">
       <a mat-menu-item routerLink="/profile">

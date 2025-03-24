@@ -147,4 +147,54 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Test login endpoint (without JWT)
+router.post('/test-login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('Test login attempt for:', email);
+    
+    // Validate input
+    if (!email || !password) {
+      console.log('Test login: Missing email or password');
+      return res.status(400).json({ message: 'Please provide email and password' });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log('Test login: User not found:', email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('Test login: User found:', user.email);
+    
+    // Check password using bcrypt directly
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Test login: Password comparison result:', isMatch);
+    
+    if (!isMatch) {
+      console.log('Test login: Password does not match');
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    console.log('Test login: Password matched for user:', email);
+    
+    // Return success response (no token)
+    res.json({
+      success: true,
+      message: 'Login successful!',
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Test login error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router; 

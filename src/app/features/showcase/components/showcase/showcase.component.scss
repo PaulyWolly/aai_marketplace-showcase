@@ -7,18 +7,48 @@
   width: 100%;
   
   .header {
-    margin-bottom: 24px;
+    margin-bottom: 2rem;
     text-align: center;
     
     h1 {
-      font-size: 32px;
-      margin-bottom: 8px;
+      margin-bottom: 0.5rem;
+      font-size: 2rem;
       color: #333;
     }
     
     p {
-      font-size: 16px;
+      font-size: 1.1rem;
       color: #666;
+    }
+    
+    .user-items-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      
+      h1 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        button {
+          margin-right: 8px;
+        }
+      }
+      
+      p {
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #666;
+        
+        mat-icon {
+          font-size: 1rem;
+          height: 1rem;
+          width: 1rem;
+          margin-right: 4px;
+        }
+      }
     }
   }
   
@@ -144,4 +174,10 @@
       }
     }
   }
+}
+
+.refresh-button {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 16px;
 } 

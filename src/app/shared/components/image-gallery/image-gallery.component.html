@@ -1,0 +1,37 @@
+<div class="image-gallery-container">
+  <!-- Main image display -->
+  <div class="main-image-container" *ngIf="mainImageUrl">
+    <img [src]="mainImageUrl" alt="Main image" class="main-image">
+  </div>
+  <div class="main-image-placeholder" *ngIf="!mainImageUrl">
+    <div class="placeholder-message">No image available</div>
+  </div>
+
+  <!-- Image thumbnails -->
+  <div class="thumbnails-container" *ngIf="images && images.length > 0">
+    <div class="thumbnail-item" 
+         *ngFor="let imageGroup of images.controls; let i = index"
+         [class.active]="isMainImage(imageGroup)">
+      <div class="thumbnail-inner">
+        <img [src]="getImageUrl(imageGroup)" 
+             alt="Thumbnail" 
+             class="thumbnail-image" 
+             (click)="setMainImage(i)">
+        
+        <div class="thumbnail-actions" *ngIf="!readOnly">
+          <button type="button" class="action-btn rotate-left" title="Rotate left" (click)="rotateImage(i)">↺</button>
+          <button type="button" class="action-btn remove" title="Remove image" (click)="removeImage(i)">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload new image -->
+  <div class="upload-container" *ngIf="!readOnly">
+    <input type="file" id="image-upload" accept="image/*" (change)="onFileSelected($event)" [disabled]="isUploading">
+    <label for="image-upload" class="upload-button" [class.disabled]="isUploading">
+      <span *ngIf="!isUploading">Add Image</span>
+      <span *ngIf="isUploading">Processing...</span>
+    </label>
+  </div>
+</div> 

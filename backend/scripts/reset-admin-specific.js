@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const config = require('./config');
-const User = require('./models/User');
+const config = require('../config');
+const User = require('../models/User');
 
 // Admin email and new password
 const ADMIN_EMAIL = 'pwelby@gmail.com';
-const NEW_PASSWORD = 'admin123';
+const NEW_PASSWORD = 'PJW_1236';
 
 async function resetSpecificAdminPassword() {
   try {

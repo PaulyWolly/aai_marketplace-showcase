@@ -38,6 +38,10 @@ const routes: Routes = [
     canActivate: [AuthGuard]
   },
   {
+    path: 'help',
+    loadChildren: () => import('./features/help/help.module').then(m => m.HelpModule)
+  },
+  {
     path: '**',
     redirectTo: 'showcase'
   }

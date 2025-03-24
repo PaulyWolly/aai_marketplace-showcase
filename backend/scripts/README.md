@@ -70,4 +70,39 @@ If you encounter any issues:
 - These scripts are intended for development and administrative purposes only
 - Store these scripts in a secure location
 - Do not commit passwords to version control
-- Consider using environment variables for sensitive information 
+- Consider using environment variables for sensitive information
+
+## New Directory-Safe Script Runner
+
+For your convenience, we've added a script runner that automatically detects if you're running a script from the wrong directory.
+
+```bash
+# From the project root directory:
+node backend/scripts/run-admin-script.js reset-admin-password.js mypassword123
+
+# Or from the backend directory:
+node scripts/run-admin-script.js reset-admin-password.js mypassword123
+```
+
+The script runner will:
+1. Detect if you're running from the root project or backend directory
+2. Automatically change to the backend directory if needed
+3. Show available scripts if you enter an invalid script name
+4. Pass all arguments to the target script
+
+### Examples
+
+Reset admin password:
+```bash
+node backend/scripts/run-admin-script.js reset-admin-password.js admin123
+```
+
+Create admin user:
+```bash
+node backend/scripts/run-admin-script.js create-admin-user.js admin@example.com admin123 Admin User
+```
+
+List available scripts:
+```bash
+node backend/scripts/run-admin-script.js
+``` 

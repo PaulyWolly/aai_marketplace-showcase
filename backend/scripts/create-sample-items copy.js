@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
-const config = require('./config');
-const User = require('./models/User');
-const Appraisal = require('./models/appraisal.model');
+const config = require('../config');
+const User = require('../models/User');
+const Appraisal = require('../models/appraisal.model');
 
 // Connect to MongoDB
 mongoose.connect(config.mongoURI)

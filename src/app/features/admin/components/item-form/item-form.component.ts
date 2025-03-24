@@ -6,6 +6,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { AppraisalService, Appraisal } from '../../../appraisal/services/appraisal.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { ImageCaptureDialogComponent } from '../../../../shared/components/image-capture-dialog/image-capture-dialog.component';
+import { environment } from '../../../../../environments/environment';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-item-form',
@@ -30,7 +32,8 @@ export class ItemFormComponent implements OnInit {
     private appraisalService: AppraisalService,
     private categoriesService: CategoriesService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {
     this.categories = this.categoriesService.categories;
     this.conditions = this.categoriesService.conditions;
@@ -250,52 +253,254 @@ export class ItemFormComponent implements OnInit {
       this.loading = true;
       this.error = null;
       
-      const formData = this.itemForm.value;
+      // Get form data
+      const formData = {...this.itemForm.value};
       
-      // Ensure we have at least one image
-      if (this.images.length === 0) {
-        this.error = 'At least one image is required';
-        this.loading = false;
-        this.snackBar.open('At least one image is required', 'Close', { duration: 3000 });
+      // Check if we have images
+      if (formData.images && formData.images.length > 0) {
+        // Create FormData object for multipart/form-data submission
+        const multipartFormData = new FormData();
+        
+        // Add form fields to FormData
+        Object.keys(formData).forEach(key => {
+          if (key !== 'images') {
+            if (key === 'appraisal') {
+              multipartFormData.append(key, JSON.stringify(formData[key]));
+            } else if (key === 'isPublished') {
+              multipartFormData.append(key, formData[key] ? 'true' : 'false');
+            } else {
+              multipartFormData.append(key, formData[key]);
+            }
+          }
+        });
+        
+        // Add ID if in edit mode
+        if (this.isEditMode && this.itemId) {
+          multipartFormData.append('_id', this.itemId);
+          multipartFormData.append('id', this.itemId);
+        }
+        
+        // Convert base64 image to blob and add to form data
+        // Get the main image from the form
+        if (formData.imageUrl) {
+          try {
+            // Check if the image is a data URL (from the camera or file upload)
+            if (formData.imageUrl.startsWith('data:')) {
+              const blob = this.dataURLtoBlob(formData.imageUrl);
+              multipartFormData.append('image', blob, 'image.jpg');
+            } else {
+              // If it's a URL, pass it as is
+              multipartFormData.append('imageUrl', formData.imageUrl);
+            }
+          } catch (err) {
+            console.error('Error processing image:', err);
+            this.snackBar.open('Error processing image. Please try again.', 'Close', { duration: 3000 });
+            this.loading = false;
+            return;
+          }
+        }
+        
+        // Submit the form data using XHR to support multipart/form-data
+        const result = await this.submitFormWithMultipart(multipartFormData);
+        
+        this.snackBar.open(this.isEditMode ? 'Item updated successfully' : 'Item created successfully', 'Close', { duration: 3000 });
+        
+        if (this.returnUrl) {
+          this.router.navigateByUrl(this.returnUrl);
+        } else {
+          this.router.navigate(['/admin/items']);
+        }
+      } else {
+        // Standard submission without file upload
+        console.warn('No images found, using standard JSON submission');
+        
+        // Ensure required data is present
+        if (!formData.imageUrl) {
+          this.snackBar.open('Please add at least one image', 'Close', { duration: 3000 });
+          this.loading = false;
+          return;
+        }
+        
+        const result = await this.appraisalService.saveAppraisal(formData);
+        
+        this.snackBar.open(this.isEditMode ? 'Item updated successfully' : 'Item created successfully', 'Close', { duration: 3000 });
+        
+        if (this.returnUrl) {
+          this.router.navigateByUrl(this.returnUrl);
+        } else {
+          this.router.navigate(['/admin/items']);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error saving item:', err);
+      this.error = err.message || 'Failed to save item';
+      this.snackBar.open(`Error: ${this.error}`, 'Close', { duration: 5000 });
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  /**
+   * Submit form data using multipart/form-data approach
+   */
+  private submitFormWithMultipart(formData: FormData): Promise<any> {
+    // Debug logging for form data
+    console.log('Submitting with multipart form data');
+    
+    // Use a safer approach to iterate through FormData
+    const formDataKeys: string[] = [];
+    formData.forEach((value, key) => {
+      // Don't log the full image content as it's too large
+      if (key === 'image' || (typeof value === 'string' && value.length > 500)) {
+        console.log(`${key}: [Large binary or string data]`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
+      formDataKeys.push(key);
+    });
+    
+    // Check for required fields
+    const requiredFields = ['name', 'category', 'condition'];
+    const missingFields = requiredFields.filter(field => !formDataKeys.includes(field));
+    if (missingFields.length > 0) {
+      console.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return Promise.reject(new Error(`Missing required fields: ${missingFields.join(', ')}`));
+    }
+    
+    // Capture references to use inside the Promise
+    const router = this.router;
+    const snackBar = this.snackBar;
+    const itemId = this.itemId;
+    const editMode = this.isEditMode;
+    const authService = this.authService;
+    
+    return new Promise<any>((resolve, reject) => {
+      // Construct URL
+      let url = `${environment.apiUrl}/appraisals`;
+      
+      // For edit mode, include the itemId in the URL path
+      if (editMode && itemId) {
+        url = `${environment.apiUrl}/appraisals/${itemId}`;
+        console.log(`Edit mode URL with itemId: ${url}`);
+      }
+      
+      console.log('Submitting to URL:', url);
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open(editMode ? 'PUT' : 'POST', url);
+      
+      // Get a fresh token to ensure it's not expired
+      const token = authService.getToken();
+      
+      if (!token) {
+        console.error('No authentication token available');
+        snackBar.open('Authentication error: Please log in again', 'Close', { duration: 5000 });
+        authService.logout();
+        router.navigate(['/login']);
+        reject(new Error('No authentication token available'));
         return;
       }
       
-      // If we have images in the array, use the first one as the main imageUrl if not already set
-      if (!formData.imageUrl && formData.images && formData.images.length > 0) {
-        formData.imageUrl = formData.images[0];
+      console.log('Setting Authorization header with token');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      
+      // Add response type for easier parsing
+      xhr.responseType = 'json';
+      
+      // Add progress tracking
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          console.log(`Upload progress: ${percentComplete}%`);
+        }
+      };
+      
+      // Add event listeners
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('XHR success response:', xhr.response);
+          try {
+            // With responseType='json', response is already parsed
+            const response = xhr.response;
+            if (response) {
+              resolve(response);
+            } else {
+              console.warn('Empty response received (status OK)');
+              resolve({success: true});
+            }
+          } catch (err) {
+            console.error('Error handling response:', err);
+            reject(err);
+          }
+        } else {
+          console.error(`Server error: ${xhr.status} ${xhr.statusText}`, xhr.response);
+          
+          let errorDetail = `Server returned ${xhr.status}: ${xhr.statusText}`;
+          
+          // Handle specific error codes
+          if (xhr.status === 401 || xhr.status === 403) {
+            console.error('Authentication error - token may be expired');
+            snackBar.open('Your session has expired. Please log in again.', 'Close', { duration: 5000 });
+            authService.logout();
+            router.navigate(['/login']);
+          } else if (xhr.status === 413) {
+            errorDetail = 'Image is too large to upload. Please use a smaller image.';
+          }
+          
+          reject(new Error(errorDetail));
+        }
+      };
+      
+      xhr.onerror = function() {
+        console.error('XHR network error');
+        reject(new Error('Network error occurred. Please check your internet connection.'));
+      };
+      
+      xhr.ontimeout = function() {
+        console.error('XHR request timed out');
+        reject(new Error('Request timed out - the image might be too large. Please try a smaller image.'));
+      };
+      
+      // Increase timeout for large requests
+      xhr.timeout = 120000; // 120 seconds
+      
+      // Log that we're about to send
+      console.log('Sending FormData with XHR...');
+      try {
+        xhr.send(formData);
+      } catch (err) {
+        console.error('Error sending XHR request:', err);
+        reject(new Error('Failed to send request: ' + (err as Error).message));
+      }
+    });
+  }
+  
+  /**
+   * Convert base64 data URL to Blob
+   */
+  private dataURLtoBlob(dataUrl: string): Blob {
+    try {
+      // Split the data URL to get the base64 data
+      const parts = dataUrl.split(';base64,');
+      
+      if (parts.length !== 2) {
+        throw new Error('Invalid data URL format');
       }
       
-      if (this.isEditMode && this.itemId) {
-        // Update existing item
-        await this.appraisalService.saveAppraisal({
-          _id: this.itemId,
-          // Preserve the original userId if this is an admin editing a member's item
-          userId: this.originalItem?.userId,
-          ...formData
-        });
-        this.snackBar.open('Item updated successfully', 'Close', { duration: 3000 });
-      } else {
-        // Create new item
-        await this.appraisalService.saveAppraisal(formData);
-        this.snackBar.open('Item created successfully', 'Close', { duration: 3000 });
+      const contentType = parts[0].split(':')[1] || 'image/jpeg';
+      const raw = window.atob(parts[1]);
+      const rawLength = raw.length;
+      
+      // Create array buffer
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
       }
       
-      // Navigate back to the appropriate page
-      if (this.returnUrl) {
-        this.router.navigateByUrl(decodeURIComponent(this.returnUrl));
-      } else {
-        this.router.navigate(['/admin/items']);
-      }
+      return new Blob([uInt8Array], { type: contentType });
     } catch (err) {
-      console.error('Error saving item:', err);
-      if (err instanceof Error) {
-        this.error = err.message || 'Failed to save item';
-      } else {
-        this.error = 'Failed to save item';
-      }
-      this.snackBar.open('Failed to save item', 'Close', { duration: 3000 });
-    } finally {
-      this.loading = false;
+      console.error('Error converting data URL to blob:', err);
+      throw err;
     }
   }
 

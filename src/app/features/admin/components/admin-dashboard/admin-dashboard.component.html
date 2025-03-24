@@ -38,22 +38,27 @@
 
     <!-- Item Management Section -->
     <div *ngIf="selectedSection === 'items'" class="section-content">
-      <div class="action-buttons">
-        <button mat-raised-button color="primary" routerLink="/admin/items/new">
-          <mat-icon>add</mat-icon>
-          Add New Item
-        </button>
-        <button mat-raised-button color="accent" routerLink="/appraisal/capture">
-          <mat-icon>photo_camera</mat-icon>
-          Appraise New Item
-        </button>
+      <div class="item-management-header">
+        <div class="action-buttons">
+          <button mat-raised-button color="primary" routerLink="/admin/items/new">
+            <mat-icon>add</mat-icon>
+            Add New Item
+          </button>
+          <button mat-raised-button color="accent" routerLink="/appraisal/capture">
+            <mat-icon>photo_camera</mat-icon>
+            Appraise New Item
+          </button>
+        </div>
+        
+        <div class="section-title" *ngIf="!selectedMemberId">
+          <h2>Select a Member to View Their Items</h2>
+        </div>
       </div>
 
       <!-- Item Management Content -->
       <div class="item-management-content">
         <!-- Show member list if no member is selected -->
         <div *ngIf="!selectedMemberId" class="member-selection">
-          <h2>Select a Member to View Their Items</h2>
           <app-user-management [itemManagementMode]="true" (memberSelected)="onMemberSelected($event)"></app-user-management>
         </div>
         
@@ -64,6 +69,7 @@
               <mat-icon>arrow_back</mat-icon>
               Back to Member List
             </button>
+            <h2>Items for {{selectedMemberName}}</h2>
           </div>
           <app-item-management [userItemsOnly]="true" [userId]="selectedMemberId" [userName]="selectedMemberName"></app-item-management>
         </div>

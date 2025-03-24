@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ShowcaseService } from '../../services/showcase.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { Appraisal } from '../../../appraisal/services/appraisal.service';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-showcase',
@@ -17,19 +18,55 @@ export class ShowcaseComponent implements OnInit {
   searchText = '';
   selectedCategory = '';
   sortBy = 'newest';
+  userId: string | null = null;
+  userName: string | null = null;
+  isAdmin = false;
   
   categories: string[];
 
   constructor(
     private showcaseService: ShowcaseService,
     private categoriesService: CategoriesService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService
   ) {
     this.categories = this.categoriesService.categories;
   }
 
   ngOnInit(): void {
-    this.loadItems();
+    // Check if admin for additional features
+    this.authService.isAdmin$.subscribe(isAdmin => {
+      this.isAdmin = isAdmin;
+    });
+    
+    // Clear the cache on init to ensure fresh data
+    if (this.showcaseService['clearCache']) {
+      console.log('Clearing showcase cache on component initialization');
+      this.showcaseService['clearCache']();
+    }
+    
+    // Check for userId parameter
+    this.route.paramMap.subscribe(params => {
+      this.userId = params.get('userId');
+      
+      // If userId is provided, we're in user-specific view
+      if (this.userId) {
+        // Get user's name if possible
+        this.authService.getBasicUserInfo(this.userId).subscribe({
+          next: (user) => {
+            if (user) {
+              this.userName = `${user.firstName} ${user.lastName}`;
+            }
+          },
+          error: (err) => {
+            console.error('Error fetching user details:', err);
+          }
+        });
+      }
+      
+      this.loadItems();
+    });
   }
 
   async loadItems(): Promise<void> {
@@ -37,7 +74,16 @@ export class ShowcaseComponent implements OnInit {
       this.loading = true;
       this.error = null;
       
-      const items = await this.showcaseService.getShowcaseItems();
+      let items: Appraisal[] | undefined;
+      
+      // If userId is provided, fetch only that user's items
+      if (this.userId) {
+        console.log(`Loading items for user: ${this.userId}`);
+        items = await this.showcaseService.getUserItems(this.userId);
+      } else {
+        items = await this.showcaseService.getShowcaseItems();
+      }
+      
       if (items) {
         this.items = items;
         this.applyFilters();
@@ -65,10 +111,10 @@ export class ShowcaseComponent implements OnInit {
     if (this.searchText) {
       const searchLower = this.searchText.toLowerCase();
       result = result.filter(item => 
-        item.name.toLowerCase().includes(searchLower) || 
-        item.category.toLowerCase().includes(searchLower) ||
-        item.condition.toLowerCase().includes(searchLower) ||
-        (item.appraisal.details && item.appraisal.details.toLowerCase().includes(searchLower))
+        (item.name?.toLowerCase().includes(searchLower) || false) || 
+        (item.category?.toLowerCase().includes(searchLower) || false) ||
+        (item.condition?.toLowerCase().includes(searchLower) || false) ||
+        (item.appraisal?.details?.toLowerCase().includes(searchLower) || false)
       );
     }
     
@@ -120,8 +166,45 @@ export class ShowcaseComponent implements OnInit {
   }
   
   viewItemDetails(item: Appraisal): void {
-    if (item._id) {
+    if (item && item._id) {
       this.router.navigate(['/showcase/item', item._id]);
     }
+  }
+
+  goBack(): void {
+    // If we're in admin view, go back to admin user management
+    if (this.isAdmin) {
+      this.router.navigate(['/admin'], { queryParams: { selectedSection: 'users' } });
+    } else {
+      // Otherwise go back to the main showcase
+      this.router.navigate(['/showcase']);
+    }
+  }
+
+  filterItems() {
+    if (!this.searchText) {
+      this.filteredItems = [...this.items];
+      return;
+    }
+    
+    const searchLower = this.searchText.toLowerCase();
+    this.filteredItems = this.items.filter(item => {
+      return (
+        (item.name && item.name.toLowerCase().includes(searchLower)) ||
+        (item.category && item.category.toLowerCase().includes(searchLower)) ||
+        (item.condition && item.condition.toLowerCase().includes(searchLower)) ||
+        (item.appraisal && item.appraisal.details && item.appraisal.details.toLowerCase().includes(searchLower))
+      );
+    });
+  }
+
+  refreshItems(): void {
+    // Clear the cache first
+    if (this.showcaseService['clearCache']) {
+      this.showcaseService['clearCache']();
+    }
+    
+    // Then reload
+    this.loadItems();
   }
 } 

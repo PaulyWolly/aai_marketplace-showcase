@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            margin-right: 10px;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #f1f1f1;
+            padding: 15px;
+            overflow: auto;
+            border-radius: 4px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        input[type="text"] {
+            padding: 8px;
+            width: 100%;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin API Test</h1>
+        <p>This page lets you test the admin API endpoints directly.</p>
+        
+        <div class="card">
+            <h2>Authentication</h2>
+            <div>
+                <label for="token">JWT Token:</label>
+                <input type="text" id="token" placeholder="Paste your JWT token here">
+                <button id="setToken">Set Token</button>
+                <button id="clearToken">Clear Token</button>
+            </div>
+            <p id="tokenStatus">No token set</p>
+        </div>
+        
+        <div class="card">
+            <h2>User API Tests</h2>
+            <button id="testGetAllUsers">Get All Users</button>
+            <div id="userResult">
+                <p>Result will appear here...</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Appraisal API Tests</h2>
+            <button id="testGetAllAppraisals">Get All Appraisals</button>
+            <div id="appraisalResult">
+                <p>Result will appear here...</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>User Appraisals Tests</h2>
+            <input type="text" id="userId" placeholder="Enter user ID">
+            <button id="testGetUserAppraisals">Get User Appraisals</button>
+            <div id="userAppraisalResult">
+                <p>Result will appear here...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let jwtToken = '';
+        
+        // DOM elements
+        const tokenInput = document.getElementById('token');
+        const tokenStatusEl = document.getElementById('tokenStatus');
+        const userResultEl = document.getElementById('userResult');
+        const appraisalResultEl = document.getElementById('appraisalResult');
+        const userAppraisalResultEl = document.getElementById('userAppraisalResult');
+        const userIdInput = document.getElementById('userId');
+        
+        // Set token from input
+        document.getElementById('setToken').addEventListener('click', () => {
+            jwtToken = tokenInput.value.trim();
+            if (jwtToken) {
+                const tokenParts = jwtToken.split('.');
+                
+                if (tokenParts.length === 3) {
+                    try {
+                        // Decode payload (middle part)
+                        const payload = JSON.parse(atob(tokenParts[1]));
+                        const expiry = new Date(payload.exp * 1000);
+                        const isExpired = expiry < new Date();
+                        
+                        tokenStatusEl.innerHTML = `
+                            <span class="${isExpired ? 'error' : 'success'}">
+                                Token set. User: ${payload.email}, Role: ${payload.role}, 
+                                Expires: ${expiry.toLocaleString()} (${isExpired ? 'EXPIRED' : 'VALID'})
+                            </span>
+                        `;
+                        
+                        // Store in localStorage
+                        localStorage.setItem('jwtToken', jwtToken);
+                    } catch (e) {
+                        tokenStatusEl.innerHTML = `<span class="error">Failed to parse token: ${e.message}</span>`;
+                    }
+                } else {
+                    tokenStatusEl.innerHTML = '<span class="error">Invalid token format</span>';
+                }
+            } else {
+                tokenStatusEl.innerHTML = '<span class="error">No token provided</span>';
+            }
+        });
+        
+        // Clear token
+        document.getElementById('clearToken').addEventListener('click', () => {
+            jwtToken = '';
+            tokenInput.value = '';
+            tokenStatusEl.innerHTML = 'Token cleared';
+            localStorage.removeItem('jwtToken');
+        });
+        
+        // Load token from localStorage on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedToken = localStorage.getItem('jwtToken');
+            if (savedToken) {
+                tokenInput.value = savedToken;
+                document.getElementById('setToken').click();
+            }
+        });
+        
+        // Helper function for API calls
+        async function callApi(endpoint, resultElement) {
+            if (!jwtToken) {
+                resultElement.innerHTML = '<p class="error">Please set a JWT token first</p>';
+                return;
+            }
+            
+            resultElement.innerHTML = '<p>Loading...</p>';
+            
+            try {
+                const response = await fetch(`/api${endpoint}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const responseData = await response.json();
+                
+                if (response.ok) {
+                    resultElement.innerHTML = `
+                        <p class="success">Success! Status: ${response.status}</p>
+                        <p>Found: ${Array.isArray(responseData) ? responseData.length : 1} records</p>
+                        <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    `;
+                } else {
+                    resultElement.innerHTML = `
+                        <p class="error">Error! Status: ${response.status}</p>
+                        <pre>${JSON.stringify(responseData, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultElement.innerHTML = `
+                    <p class="error">Network Error: ${error.message}</p>
+                    <p>Check browser console for details</p>
+                `;
+                console.error('API call error:', error);
+            }
+        }
+        
+        // Test API endpoints
+        document.getElementById('testGetAllUsers').addEventListener('click', () => {
+            callApi('/users', userResultEl);
+        });
+        
+        document.getElementById('testGetAllAppraisals').addEventListener('click', () => {
+            callApi('/appraisals/all', appraisalResultEl);
+        });
+        
+        document.getElementById('testGetUserAppraisals').addEventListener('click', () => {
+            const userId = userIdInput.value.trim();
+            if (!userId) {
+                userAppraisalResultEl.innerHTML = '<p class="error">Please enter a user ID</p>';
+                return;
+            }
+            callApi(`/appraisals/user/${userId}`, userAppraisalResultEl);
+        });
+    </script>
+</body>
+</html> 

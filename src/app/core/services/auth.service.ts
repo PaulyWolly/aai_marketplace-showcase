@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, tap, map } from 'rxjs';
+import { BehaviorSubject, Observable, tap, map, catchError, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
@@ -51,14 +51,14 @@ export class AuthService {
   isLoggedIn(): boolean {
     const user = this.userSubject.value;
     const isLoggedIn = !!user;
-    console.log('isLoggedIn check:', isLoggedIn, user?.email);
+    console.log('isLoggedIn check:', isLoggedIn, 'User:', user);
     return isLoggedIn;
   }
 
   isAdmin(): boolean {
     const user = this.userSubject.value;
     const isAdmin = user?.role === 'admin';
-    console.log('isAdmin check:', isAdmin, user?.email, user?.role);
+    console.log('isAdmin check:', isAdmin, 'User:', user);
     return isAdmin;
   }
 
@@ -96,24 +96,86 @@ export class AuthService {
   }
 
   getToken(): string | null {
+    // First try to get token from user object in memory
     const user = this.userSubject.value;
-    const token = user ? user.token : null;
+    let token = user ? user.token : null;
+    
+    // If no token in memory, try getting from localStorage
+    if (!token) {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser && parsedUser.token) {
+            token = parsedUser.token;
+            console.log('getToken: Retrieved token from localStorage');
+            
+            // Update user subject if needed
+            if (!this.userSubject.value) {
+              console.log('getToken: Updating user subject with stored user');
+              this.userSubject.next(parsedUser);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('getToken: Error retrieving token from localStorage:', error);
+      }
+    }
+    
     console.log('getToken called, token exists:', !!token);
     return token;
   }
 
   // User Management Methods for Admin
   getAllUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${environment.apiUrl}/users`);
+    const currentUser = this.getCurrentUser();
+    console.log('getAllUsers - Current user:', currentUser);
+    console.log('getAllUsers - API URL:', `${environment.apiUrl}/users`);
+    console.log('getAllUsers - Auth token:', currentUser?.token ? `${currentUser.token.substring(0, 10)}...` : 'none');
+    console.log('getAllUsers - Starting API call...');
+
+    return this.http.get<User[]>(`${environment.apiUrl}/users`).pipe(
+      tap(users => {
+        console.log('getAllUsers - Response received:', !!users);
+        console.log('getAllUsers - Response has length:', users?.length);
+        console.log('getAllUsers - Response:', users);
+      }),
+      catchError(error => {
+        console.error('getAllUsers - Error details:', {
+          status: error.status,
+          statusText: error.statusText,
+          error: error.error,
+          message: error.message,
+          url: error.url,
+          headers: error.headers?.keys().map((key: string) => `${key}: ${error.headers?.get(key)}`)
+        });
+        
+        console.error('getAllUsers - Error message:', error.message || 'Unknown error');
+        console.error('getAllUsers - Error name:', error.name);
+        console.error('getAllUsers - Error type:', typeof error);
+        
+        if (error.status === 401) {
+          console.error('getAllUsers - Authentication error - Token rejected. Logging out...');
+          this.logout();
+        }
+        
+        throw error;
+      })
+    );
   }
 
   getUserById(userId: string): Observable<User> {
-    return this.http.get<User>(`${environment.apiUrl}/users/${userId}`);
+    console.log('Fetching user by ID:', userId);
+    return this.http.get<User>(`${environment.apiUrl}/users/${userId}`).pipe(
+      tap(user => console.log('Retrieved user:', user))
+    );
   }
 
-  // Get basic user info (accessible to all authenticated users)
   getBasicUserInfo(userId: string): Observable<User> {
-    return this.http.get<User>(`${environment.apiUrl}/users/${userId}/basic`);
+    console.log('Fetching basic user info for:', userId);
+    return this.http.get<User>(`${environment.apiUrl}/users/${userId}/basic`).pipe(
+      tap(user => console.log('Retrieved basic user info:', user))
+    );
   }
 
   updateUserRole(userId: string, role: string): Observable<User> {

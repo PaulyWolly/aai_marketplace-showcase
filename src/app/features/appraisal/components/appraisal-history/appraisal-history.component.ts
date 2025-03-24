@@ -24,7 +24,7 @@ export class AppraisalHistoryComponent implements OnInit {
   async loadAppraisals() {
     try {
       this.loading = true;
-      const data = await this.appraisalService.getUserAppraisals();
+      const data = await this.appraisalService.fetchUserAppraisals();
       if (data) {
         // Sort by timestamp (newest first)
         this.appraisals = data.sort((a, b) => {
