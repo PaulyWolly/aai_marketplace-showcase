@@ -9,6 +9,10 @@
   max-width: 640px;
   padding: 0;
   margin: 0;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .camera-container {
@@ -16,6 +20,7 @@
   flex-direction: column;
   align-items: center;
   padding: 8px 24px 24px;
+  overflow-y: auto;
   
   .camera-error {
     color: #f44336;
@@ -83,6 +88,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         width: 100%;
         max-width: 580px;
+        max-height: 60vh;
         
         // Make webcam responsive
         ::ng-deep video {
@@ -96,6 +102,7 @@
     .camera-controls {
       display: flex;
       justify-content: center;
+      flex-wrap: wrap;
       gap: 16px;
       margin-top: 24px;
       margin-bottom: 8px;
@@ -105,7 +112,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 200px;
+        min-width: 140px;
         
         mat-icon {
           margin-right: 8px;
@@ -129,7 +136,7 @@
       img {
         width: auto;
         max-width: 100%;
-        max-height: 60vh;
+        max-height: 50vh;
         border-radius: 8px;
         object-fit: contain;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -139,6 +146,7 @@
     .snapshot-controls {
       display: flex;
       justify-content: center;
+      flex-wrap: wrap;
       gap: 16px;
       margin-top: 24px;
       margin-bottom: 8px;
@@ -148,7 +156,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 160px;
+        min-width: 120px;
         
         mat-icon {
           margin-right: 8px;
@@ -160,19 +168,55 @@
 
 // Media queries for mobile responsive design
 @media (max-width: 600px) {
+  .compact-dialog {
+    max-height: 80vh;
+  }
+  
   .camera-container {
-    padding: 8px 16px 16px;
+    padding: 8px 8px 16px;
     
     .webcam-container, .snapshot-container {
+      .webcam-wrapper {
+        max-height: 50vh;
+      }
+      
       .camera-controls, .snapshot-controls {
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
+        gap: 8px;
         width: 100%;
         
         button {
-          flex: 1;
-          min-width: 140px;
+          flex: 1 1 auto;
+          min-width: 100px;
+          padding: 0 8px;
+          font-size: 14px;
+          
+          mat-icon {
+            margin-right: 4px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Extra small screens
+@media (max-width: 360px) {
+  .camera-container {
+    .webcam-container, .snapshot-container {
+      .camera-controls, .snapshot-controls {
+        button {
+          min-width: 80px;
+          flex-basis: calc(50% - 8px);
+          font-size: 13px;
+          
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
         }
       }
     }

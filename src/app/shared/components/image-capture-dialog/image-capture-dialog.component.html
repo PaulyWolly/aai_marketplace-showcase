@@ -42,6 +42,9 @@
         <button mat-raised-button color="primary" (click)="triggerSnapshot()">
           <mat-icon>photo_camera</mat-icon> Capture Photo
         </button>
+        <button mat-raised-button color="warn" (click)="cancel()">
+          <mat-icon>close</mat-icon> Cancel
+        </button>
       </div>
     </div>
 
@@ -58,11 +61,11 @@
         <button mat-raised-button color="primary" (click)="useImage()">
           <mat-icon>check</mat-icon> Use Photo
         </button>
+        
+        <button mat-raised-button (click)="cancel()">
+          <mat-icon>close</mat-icon> Cancel
+        </button>
       </div>
     </div>
   </div>
-</mat-dialog-content>
-
-<mat-dialog-actions align="center" *ngIf="!webcamImage && errors.length === 0">
-  <button mat-button (click)="cancel()">Cancel</button>
-</mat-dialog-actions> 
+</mat-dialog-content> 

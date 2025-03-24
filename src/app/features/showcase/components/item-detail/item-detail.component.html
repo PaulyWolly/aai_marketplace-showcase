@@ -1,4 +1,9 @@
 <div class="item-detail-container">
+  <!-- Refresh Button -->
+  <button mat-icon-button color="primary" (click)="refreshItem()" matTooltip="Refresh Item Data" class="refresh-button">
+    <mat-icon>refresh</mat-icon>
+  </button>
+
   <button mat-button class="back-button" (click)="goBack()">
     <mat-icon>arrow_back</mat-icon> Back to Showcase
   </button>
@@ -35,191 +40,255 @@
   </div>
 
   <div *ngIf="!loading && item" class="item-content">
-    <div class="item-image-section">
-      <!-- Main Image with Navigation Arrows -->
-      <div class="main-image-container">
-        <button *ngIf="allImages.length > 1" mat-icon-button class="nav-button prev-button" (click)="previousImage()">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        
-        <img [src]="currentImage" [alt]="item.name" class="main-image" 
-             (error)="handleImageError($event)">
-        
-        <button *ngIf="allImages.length > 1" mat-icon-button class="nav-button next-button" (click)="nextImage()">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </div>
-      
-      <!-- Thumbnails Row -->
-      <div *ngIf="allImages.length > 1" class="thumbnails-container">
-        <div 
-          *ngFor="let image of allImages; let i = index" 
-          class="thumbnail" 
-          [class.active]="i === currentImageIndex"
-          (click)="selectImage(i)"
-          [attr.title]="'View image ' + (i+1)"
-        >
-          <img [src]="image" [alt]="'Thumbnail ' + (i+1)">
-          <button *ngIf="isAdmin" mat-icon-button color="warn" class="delete-image-btn" 
-                  (click)="$event.stopPropagation(); deleteImage(i)" 
-                  [title]="'Delete image ' + (i+1)"
-                  [attr.aria-label]="'Delete image ' + (i+1)">
-            <mat-icon>delete</mat-icon>
-          </button>
+    <div class="item-header">
+      <h1>{{ item.name }}</h1>
+    </div>
+    
+    <div class="item-details-layout">
+      <!-- Left side - Image gallery -->
+      <div class="left-column">
+        <div class="image-gallery-container">
+          <!-- Main image display -->
+          <div class="main-image-container">
+            <img [src]="allImages[currentImageIndex]" [alt]="item.name" class="main-image" 
+                 (error)="handleImageError($event)">
+            
+            <!-- Image navigation controls -->
+            <button *ngIf="allImages && allImages.length > 1" mat-icon-button class="nav-button prev-button" (click)="prevImage()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            
+            <button *ngIf="allImages && allImages.length > 1" mat-icon-button class="nav-button next-button" (click)="nextImage()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+            
+            <!-- Refresh gallery button -->
+            <button mat-icon-button class="refresh-gallery-button" (click)="refreshImageGallery()" 
+                    matTooltip="Refresh Image Gallery">
+              <mat-icon>refresh</mat-icon>
+            </button>
+            
+            <!-- Set as main image button -->
+            <button *ngIf="allImages && allImages.length > 0 && allImages[currentImageIndex] !== item.imageUrl"
+                    mat-raised-button color="primary" class="set-main-button" 
+                    (click)="selectAsMainImage(currentImageIndex)">
+              <mat-icon>star</mat-icon> Set as Main
+            </button>
+          </div>
+          
+          <!-- Thumbnails Row -->
+          <div *ngIf="allImages && allImages.length > 1" class="thumbnails-container">
+            <div 
+              *ngFor="let image of allImages; let i = index" 
+              class="thumbnail" 
+              [class.active]="i === currentImageIndex"
+              [class.main-image-indicator]="item.imageUrl === image"
+              (click)="selectImage(i)"
+              (dblclick)="onImageDoubleClick(i)"
+              [attr.title]="'View image ' + (i+1) + (item.imageUrl === image ? ' (Main image)' : '')"
+            >
+              <img [src]="image" [alt]="'Thumbnail ' + (i+1)" (error)="handleImageError($event)">
+              
+              <!-- Selection indicator for current image -->
+              <div class="thumbnail-overlay" *ngIf="i === currentImageIndex">
+                <mat-icon>check_circle</mat-icon>
+              </div>
+              
+              <!-- Main image indicator -->
+              <div class="main-image-badge" *ngIf="item.imageUrl === image">
+                <mat-icon>star</mat-icon>
+              </div>
+              
+              <!-- Thumbnail action buttons -->
+              <div class="thumbnail-actions">
+                <button *ngIf="item.imageUrl !== image" 
+                        mat-icon-button 
+                        color="primary" 
+                        class="set-main-btn" 
+                        (click)="$event.stopPropagation(); selectAsMainImage(i)" 
+                        [title]="'Set as main image'"
+                        [attr.aria-label]="'Set as main image'">
+                  <mat-icon>star</mat-icon>
+                </button>
+                
+                <button *ngIf="isAdmin && allImages.length > 1" 
+                        mat-icon-button 
+                        color="warn" 
+                        class="delete-image-btn" 
+                        (click)="$event.stopPropagation(); deleteImage(i)" 
+                        [title]="'Delete image ' + (i+1)"
+                        [attr.aria-label]="'Delete image ' + (i+1)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Image count and navigation info -->
+          <div class="image-count-info" *ngIf="allImages && allImages.length > 0">
+            <span>Showing image {{currentImageIndex + 1}} of {{allImages.length}}</span>
+            <span *ngIf="item.imageUrl === allImages[currentImageIndex]">(Main image)</span>
+          </div>
         </div>
       </div>
-    </div>
-
-    <div class="item-info">
-      <h1 class="item-name">{{item.name || 'Unnamed Item'}}</h1>
       
-      <div class="item-badges">
-        <span class="category-badge">{{item.category || 'Uncategorized'}}</span>
-        <span class="condition-badge">{{item.condition || 'Unknown'}}</span>
-      </div>
-      
-      <div class="item-price">
-        <h2>{{item.estimatedValue || 'Not Appraised'}}</h2>
-      </div>
-      
-      <!-- Admin Controls (only visible to admins) -->
-      <mat-card class="admin-card" *ngIf="isAdmin === true">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>admin_panel_settings</mat-icon>
-          <mat-card-title>Admin Controls</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <p><strong>Item ID:</strong> {{item._id || 'N/A'}}</p>
-          <p><strong>User ID:</strong> {{item.userId || 'N/A'}}</p>
-          <p><strong>Published Status:</strong> {{item.isPublished ? 'Yes' : 'No'}}</p>
-          <p><strong>Creation Date:</strong> {{item.timestamp ? (item.timestamp | date:'medium') : 'Unknown'}}</p>
-        </mat-card-content>
-        <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)" [disabled]="!item._id">
-            <mat-icon>edit</mat-icon> Edit Item
-          </button>
-          <button mat-raised-button color="warn" (click)="deleteItem()" class="delete-button">
-            <mat-icon>delete</mat-icon> Delete Item
-          </button>
-        </mat-card-actions>
-      </mat-card>
-      
-      <!-- Comprehensive Item Details Card -->
-      <mat-card class="details-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>info</mat-icon>
-          <mat-card-title>Item Details</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <!-- All Item Details in Grid Layout -->
-          <div class="item-details-grid">
-            <!-- Technical Details -->
-            <div class="detail-row">
-              <div class="detail-label"><strong>Reference ID:</strong></div>
-              <div class="detail-value">{{item._id | slice:0:8}}...{{item._id | slice:-8}}</div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label"><strong>Status:</strong></div>
-              <div class="detail-value">{{item.isPublished ? 'Available' : 'Not Available'}}</div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label"><strong>Added:</strong></div>
-              <div class="detail-value">{{item.timestamp ? (item.timestamp | date:'MMM d, yyyy') : 'Unknown'}}</div>
-            </div>
-            
-            <!-- Item Properties -->
-            <div class="detail-row">
-              <div class="detail-label"><strong>Category:</strong></div>
-              <div class="detail-value">{{item.category || 'Uncategorized'}}</div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label"><strong>Condition:</strong></div>
-              <div class="detail-value">{{item.condition || 'Unknown'}}</div>
-            </div>
-            <div class="detail-row">
-              <div class="detail-label"><strong>Estimated Value:</strong></div>
-              <div class="detail-value">{{item.estimatedValue || 'Not Appraised'}}</div>
-            </div>
-            
-            <!-- Conditional Details -->
-            <div class="detail-row" *ngIf="item?.height">
-              <div class="detail-label"><strong>Height:</strong></div>
-              <div class="detail-value">{{item.height}}</div>
-            </div>
-            <div class="detail-row" *ngIf="item?.width">
-              <div class="detail-label"><strong>Width:</strong></div>
-              <div class="detail-value">{{item.width}}</div>
-            </div>
-            <div class="detail-row" *ngIf="item?.weight">
-              <div class="detail-label"><strong>Weight:</strong></div>
-              <div class="detail-value">{{item.weight}}</div>
-            </div>
+      <!-- Right side - Item information -->
+      <div class="right-column">
+        <div class="item-info">
+          <h1 class="item-name">{{item.name || 'Unnamed Item'}}</h1>
+          
+          <div class="item-badges">
+            <span class="category-badge">{{item.category || 'Uncategorized'}}</span>
+            <span class="condition-badge">{{item.condition || 'Unknown'}}</span>
           </div>
           
-          <mat-divider class="section-divider" *ngIf="renderedDetails || item.appraisal?.details"></mat-divider>
+          <div class="item-price">
+            <h2>{{item.estimatedValue || 'Not Appraised'}}</h2>
+          </div>
           
-          <!-- Detailed Description -->
-          <div class="description-section">
-            <div class="description-header">
-              <strong>Description:</strong>
-            </div>
-            <div class="description-content">
-              <div *ngIf="renderedDetails" class="markdown-content" [innerHTML]="renderedDetails"></div>
-              <div *ngIf="!renderedDetails && item.appraisal?.details" class="description-text">
-                {{item.appraisal?.details}}
+          <!-- Admin Controls (only visible to admins) -->
+          <mat-card class="admin-card" *ngIf="isAdmin === true">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>admin_panel_settings</mat-icon>
+              <mat-card-title>Admin Controls</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <p><strong>Item ID:</strong> {{item._id || 'N/A'}}</p>
+              <p><strong>User ID:</strong> {{item.userId || 'N/A'}}</p>
+              <p><strong>Published Status:</strong> {{item.isPublished ? 'Yes' : 'No'}}</p>
+              <p><strong>Creation Date:</strong> {{item.timestamp ? (item.timestamp | date:'medium') : 'Unknown'}}</p>
+            </mat-card-content>
+            <mat-card-actions>
+              <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)" [disabled]="!item._id">
+                <mat-icon>edit</mat-icon> Edit Item
+              </button>
+              <button mat-raised-button color="warn" (click)="deleteItem()" class="delete-button">
+                <mat-icon>delete</mat-icon> Delete Item
+              </button>
+            </mat-card-actions>
+          </mat-card>
+          
+          <!-- Comprehensive Item Details Card -->
+          <mat-card class="details-card">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>info</mat-icon>
+              <mat-card-title>Item Details</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <!-- All Item Details in Grid Layout -->
+              <div class="item-details-grid">
+                <!-- Technical Details -->
+                <div class="detail-row">
+                  <div class="detail-label"><strong>Reference ID:</strong></div>
+                  <div class="detail-value">{{item._id | slice:0:8}}...{{item._id | slice:-8}}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label"><strong>Status:</strong></div>
+                  <div class="detail-value">{{item.isPublished ? 'Available' : 'Not Available'}}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label"><strong>Added:</strong></div>
+                  <div class="detail-value">{{item.timestamp ? (item.timestamp | date:'MMM d, yyyy') : 'Unknown'}}</div>
+                </div>
+                
+                <!-- Item Properties -->
+                <div class="detail-row">
+                  <div class="detail-label"><strong>Category:</strong></div>
+                  <div class="detail-value">{{item.category || 'Uncategorized'}}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label"><strong>Condition:</strong></div>
+                  <div class="detail-value">{{item.condition || 'Unknown'}}</div>
+                </div>
+                <div class="detail-row">
+                  <div class="detail-label"><strong>Estimated Value:</strong></div>
+                  <div class="detail-value">{{item.estimatedValue || 'Not Appraised'}}</div>
+                </div>
+                
+                <!-- Conditional Details -->
+                <div class="detail-row" *ngIf="item?.height">
+                  <div class="detail-label"><strong>Height:</strong></div>
+                  <div class="detail-value">{{item.height}}</div>
+                </div>
+                <div class="detail-row" *ngIf="item?.width">
+                  <div class="detail-label"><strong>Width:</strong></div>
+                  <div class="detail-value">{{item.width}}</div>
+                </div>
+                <div class="detail-row" *ngIf="item?.weight">
+                  <div class="detail-label"><strong>Weight:</strong></div>
+                  <div class="detail-value">{{item.weight}}</div>
+                </div>
               </div>
-              <div *ngIf="!renderedDetails && !item.appraisal?.details" class="fallback-content">
-                <p>No additional details available for this item.</p>
+              
+              <mat-divider class="section-divider" *ngIf="renderedDetails || item.appraisal?.details"></mat-divider>
+              
+              <!-- Detailed Description -->
+              <div class="description-section">
+                <div class="description-header">
+                  <strong>Description:</strong>
+                </div>
+                <div class="description-content">
+                  <div *ngIf="renderedDetails" class="markdown-content" [innerHTML]="renderedDetails"></div>
+                  <div *ngIf="!renderedDetails && item.appraisal?.details" class="description-text">
+                    {{item.appraisal?.details}}
+                  </div>
+                  <div *ngIf="!renderedDetails && !item.appraisal?.details" class="fallback-content">
+                    <p>No additional details available for this item.</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            </mat-card-content>
+          </mat-card>
+          
+          <!-- Member Information -->
+          <mat-card class="member-card">
+            <mat-card-header>
+              <mat-icon mat-card-avatar>person</mat-icon>
+              <mat-card-title>Member Information</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div *ngIf="memberLoading" class="member-loading">
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Loading member information...</span>
+              </div>
+              <div *ngIf="!memberLoading && item.owner" class="member-info">
+                <p><strong>Member:</strong> {{item.owner.name}}</p>
+              </div>
+              <div *ngIf="!memberLoading && !item.owner" class="member-info-error">
+                <p>Member information not available</p>
+              </div>
+            </mat-card-content>
+            <mat-card-actions>
+              <button mat-raised-button color="primary" (click)="contactMember()" [disabled]="!item.owner">
+                <mat-icon>email</mat-icon> Contact Member
+              </button>
+            </mat-card-actions>
+          </mat-card>
+          
+          <mat-card class="market-research-card">
+            <mat-card-header>
+              <mat-card-title>Market Research</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div *ngIf="renderedMarketResearch" class="markdown-content" [innerHTML]="renderedMarketResearch"></div>
+              <div *ngIf="!renderedMarketResearch" class="fallback-content">
+                <p>No market research available for this item.</p>
+              </div>
+            </mat-card-content>
+          </mat-card>
+          
+          <div class="action-buttons">
+            <button mat-raised-button color="primary" (click)="saveItemChanges()">
+              <mat-icon>save</mat-icon> Update
+            </button>
+            <button mat-raised-button color="primary">
+              <mat-icon>shopping_cart</mat-icon> Add to Cart
+            </button>
+            <button mat-raised-button color="accent">
+              <mat-icon>favorite</mat-icon> Add to Wishlist
+            </button>
           </div>
-        </mat-card-content>
-      </mat-card>
-      
-      <!-- Member Information -->
-      <mat-card class="member-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar>person</mat-icon>
-          <mat-card-title>Member Information</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div *ngIf="memberLoading" class="member-loading">
-            <mat-spinner diameter="20"></mat-spinner>
-            <span>Loading member information...</span>
-          </div>
-          <div *ngIf="!memberLoading && item.owner" class="member-info">
-            <p><strong>Member:</strong> {{item.owner.name}}</p>
-          </div>
-          <div *ngIf="!memberLoading && !item.owner" class="member-info-error">
-            <p>Member information not available</p>
-          </div>
-        </mat-card-content>
-        <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="contactMember()" [disabled]="!item.owner">
-            <mat-icon>email</mat-icon> Contact Member
-          </button>
-        </mat-card-actions>
-      </mat-card>
-      
-      <mat-card class="market-research-card">
-        <mat-card-header>
-          <mat-card-title>Market Research</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <div *ngIf="renderedMarketResearch" class="markdown-content" [innerHTML]="renderedMarketResearch"></div>
-          <div *ngIf="!renderedMarketResearch" class="fallback-content">
-            <p>No market research available for this item.</p>
-          </div>
-        </mat-card-content>
-      </mat-card>
-      
-      <div class="action-buttons">
-        <button mat-raised-button color="primary">
-          <mat-icon>shopping_cart</mat-icon> Add to Cart
-        </button>
-        <button mat-raised-button color="accent">
-          <mat-icon>favorite</mat-icon> Add to Wishlist
-        </button>
+        </div>
       </div>
     </div>
   </div>

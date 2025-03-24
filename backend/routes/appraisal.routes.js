@@ -97,103 +97,170 @@ router.post('/analyze', auth, async (req, res) => {
   }
 });
 
-// Save an appraisal
-router.post('/save', auth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const isAdmin = req.user.role === 'admin';
+/**
+ * Helper function to deduplicate images array
+ * Only removes exact duplicates within the images array itself
+ * Does NOT remove images that match the main imageUrl
+ * 
+ * @param {Array} imagesArray - Array of image URLs
+ * @returns {Array} - Array with duplicates removed
+ */
+function deduplicateImages(imagesArray) {
+  if (!imagesArray || !Array.isArray(imagesArray)) {
+    console.log('deduplicateImages: No imagesArray or not an array, returning empty array');
+    return [];
+  }
 
-    console.log('Received appraisal data:', JSON.stringify(req.body, null, 2));
+  // Filter out empty/null entries
+  const filteredArray = imagesArray.filter(url => url && typeof url === 'string' && url.trim() !== '');
+  console.log(`deduplicateImages: Filtered out empty entries: ${imagesArray.length} -> ${filteredArray.length}`);
+
+  // Use a Set to track seen URLs and only remove exact duplicates
+  const seen = new Set();
+  const uniqueImages = filteredArray.filter(url => {
+    // Only check for duplicates within the array itself
+    if (seen.has(url)) {
+      console.log(`deduplicateImages: Found duplicate URL: ${url}`);
+      return false;
+    }
+    seen.add(url);
+    return true;
+  });
+
+  console.log(`deduplicateImages: Final unique image count: ${uniqueImages.length}`);
+  return uniqueImages;
+}
+
+// Save appraisal (create or update)
+router.post('/save', upload.single('file'), async (req, res) => {
+  try {
+    console.log('POST /save - Create or update appraisal');
+    
+    // Debug logging
+    console.log('Form fields:', req.body);
+    if (req.file) {
+      console.log('Uploaded file:', req.file.filename);
+    } else {
+      console.log('No file uploaded with this request');
+    }
     
     // Ensure required fields are present
-    const requiredFields = ['name', 'category', 'condition', 'estimatedValue', 'imageUrl', 'appraisal'];
-    const missingFields = requiredFields.filter(field => !req.body[field]);
-    
-    if (missingFields.length > 0) {
-      console.error('Missing required fields:', missingFields);
-      return res.status(400).json({ 
-        message: 'Missing required fields', 
-        missingFields,
-        received: Object.keys(req.body)
-      });
+    if (!req.body.item) {
+      return res.status(400).json({ message: 'Missing required field: item' });
     }
     
-    // Ensure appraisal object has required fields
-    if (!req.body.appraisal.details || !req.body.appraisal.marketResearch) {
-      console.error('Missing required appraisal fields:', 
-        !req.body.appraisal.details ? 'details' : '',
-        !req.body.appraisal.marketResearch ? 'marketResearch' : ''
-      );
-      return res.status(400).json({ 
-        message: 'Missing required appraisal fields',
-        missingFields: [
-          !req.body.appraisal.details ? 'appraisal.details' : null,
-          !req.body.appraisal.marketResearch ? 'appraisal.marketResearch' : null
-        ].filter(Boolean)
-      });
+    // Parse form fields
+    const appraisalData = { ...req.body };
+    const isUpdate = !!appraisalData._id;
+    
+    // Handle nested JSON objects in form data
+    ['item', 'location', 'condition', 'pricing', 'review', 'specs'].forEach(field => {
+      if (typeof appraisalData[field] === 'string') {
+        try {
+          appraisalData[field] = JSON.parse(appraisalData[field]);
+        } catch (e) {
+          console.log(`Error parsing ${field} JSON:`, e.message);
+        }
+      }
+    });
+    
+    // Fix imageUrl if it's an array
+    if (Array.isArray(appraisalData.imageUrl)) {
+      console.log('Warning: imageUrl is an array - fixing by taking first element');
+      appraisalData.imageUrl = appraisalData.imageUrl.length > 0 ? appraisalData.imageUrl[0] : '';
     }
     
-    // Create a new appraisal or update an existing one
-    const appraisalData = {
-      ...req.body,
-      timestamp: req.body.timestamp || new Date(),
-      isPublished: req.body.isPublished !== undefined ? req.body.isPublished : true
-    };
-    
-    // If not admin, always set userId to current user
-    // If admin, preserve the original userId if it exists
-    if (!isAdmin || !appraisalData.userId) {
-      appraisalData.userId = userId;
+    // Parse images array if it's a string
+    if (typeof appraisalData.images === 'string') {
+      try {
+        console.log('Parsing images string:', appraisalData.images);
+        appraisalData.images = JSON.parse(appraisalData.images);
+        console.log('Parsed images array:', appraisalData.images);
+      } catch (e) {
+        console.log('Error parsing images JSON:', e.message);
+        // Initialize as empty array if parsing fails
+        appraisalData.images = [];
+      }
     }
     
-    let appraisal;
-    
-    if (req.body._id) {
-      // Update existing appraisal
-      if (isAdmin) {
-        // Admin can update any appraisal
-        appraisal = await AppraisalSchema.findOneAndUpdate(
-          { _id: req.body._id },
-          appraisalData,
-          { new: true }
-        );
-      } else {
-        // Regular user can only update their own appraisals
-        appraisal = await AppraisalSchema.findOneAndUpdate(
-          { _id: req.body._id, userId },
-          appraisalData,
-          { new: true }
-        );
+    // Get existing appraisal if this is an update
+    let existingAppraisal = null;
+    if (isUpdate) {
+      existingAppraisal = await AppraisalSchema.findById(appraisalData._id);
+      
+      if (!existingAppraisal) {
+        return res.status(404).json({ message: 'Appraisal not found for update' });
       }
       
-      if (!appraisal) {
-        return res.status(404).json({ message: 'Appraisal not found or you do not have permission to update it' });
+      console.log('Existing imageUrl:', existingAppraisal.imageUrl);
+      console.log('Existing images array:', existingAppraisal.images);
+      
+      // If no images array provided in the request, use existing images from database
+      if (!appraisalData.images || !Array.isArray(appraisalData.images)) {
+        console.log('No images array in request - using existing images from database');
+        appraisalData.images = existingAppraisal.images || [];
       }
     } else {
-      // Create new appraisal
-      appraisal = new AppraisalSchema(appraisalData);
-      await appraisal.save();
+      // For new appraisals, initialize empty array if not provided
+      if (!appraisalData.images) {
+        appraisalData.images = [];
+      }
     }
     
-    console.log('Appraisal saved successfully:', appraisal._id);
-    res.json(appraisal);
+    // If there's a new file uploaded, add it to the appraisal
+    if (req.file) {
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      console.log('New uploaded image URL:', imageUrl);
+      
+      // Set as main image if requested, if there is no main image, or for new appraisals
+      const setMainImage = req.body.setMainImage === 'true';
+      if (setMainImage || !appraisalData.imageUrl || !existingAppraisal) {
+        console.log('Setting uploaded image as main imageUrl');
+        appraisalData.imageUrl = imageUrl;
+      } else if (existingAppraisal && !appraisalData.imageUrl) {
+        // Otherwise, keep the existing main image
+        console.log('Preserving existing main imageUrl:', existingAppraisal.imageUrl);
+        appraisalData.imageUrl = existingAppraisal.imageUrl;
+      }
+      
+      // Always add the new image to the images array
+      console.log('Adding new image to images array');
+      appraisalData.images.push(imageUrl);
+      console.log(`Images array now has ${appraisalData.images.length} images`);
+    } else if (existingAppraisal && !appraisalData.imageUrl) {
+      // If no new image and no imageUrl in request, preserve existing imageUrl for updates
+      console.log('No new image uploaded - preserving existing imageUrl');
+      appraisalData.imageUrl = existingAppraisal.imageUrl;
+    }
+    
+    // Deduplicate the images array to avoid showing the same image multiple times
+    const originalCount = Array.isArray(appraisalData.images) ? appraisalData.images.length : 0;
+    appraisalData.images = deduplicateImages(appraisalData.images);
+    console.log(`Deduplicated images array: ${originalCount} → ${appraisalData.images.length} images`);
+    console.log('Final images array:', appraisalData.images);
+    
+    let result;
+    if (isUpdate) {
+      // Update existing appraisal
+      result = await AppraisalSchema.findByIdAndUpdate(
+        appraisalData._id,
+        appraisalData,
+        { new: true }
+      );
+      console.log('Appraisal updated successfully');
+    } else {
+      // Set userId based on authenticated user or default to system
+      appraisalData.userId = req.user?.id || 'system';
+      
+      // Create new appraisal
+      const newAppraisal = new AppraisalSchema(appraisalData);
+      result = await newAppraisal.save();
+      console.log('New appraisal created successfully');
+    }
+    
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error saving appraisal:', error);
-    
-    // Provide more detailed error information
-    if (error.name === 'ValidationError') {
-      const validationErrors = Object.keys(error.errors).reduce((acc, key) => {
-        acc[key] = error.errors[key].message;
-        return acc;
-      }, {});
-      
-      return res.status(400).json({ 
-        message: 'Validation error', 
-        validationErrors,
-        error: error.message
-      });
-    }
-    
     res.status(500).json({ message: 'Error saving appraisal', error: error.message });
   }
 });
@@ -411,26 +478,52 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       }
     }
     
+    // Fix imageUrl if it's an array (take the first element)
+    if (Array.isArray(appraisalData.imageUrl)) {
+      console.log('imageUrl is an array, fixing by taking first element:', appraisalData.imageUrl);
+      appraisalData.imageUrl = appraisalData.imageUrl.length > 0 ? appraisalData.imageUrl[0] : '';
+    }
+    
     // Add image URL if file was uploaded
     if (req.file) {
       const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-      appraisalData.imageUrl = imageUrl;
+      
+      // If updating an existing appraisal, preserve its main image URL unless explicitly overwriting
+      if (appraisalData._id && !appraisalData.setMainImage) {
+        // Keep the existing imageUrl if available
+        console.log('Preserving existing main imageUrl for update');
+      } else {
+        // Set uploaded image as the main image
+        appraisalData.imageUrl = imageUrl;
+        console.log(`Set new main imageUrl: ${imageUrl}`);
+      }
       
       // Initialize or update images array
       if (!appraisalData.images) {
-        appraisalData.images = [];
+        // If updating an existing appraisal, get its images first
+        if (appraisalData._id) {
+          const existingAppraisal = await AppraisalSchema.findById(appraisalData._id);
+          appraisalData.images = existingAppraisal ? [...existingAppraisal.images] : [];
+        } else {
+          appraisalData.images = [];
+        }
       } else if (typeof appraisalData.images === 'string') {
         try {
           appraisalData.images = JSON.parse(appraisalData.images);
         } catch (err) {
-          appraisalData.images = [];
+          // If updating an existing appraisal, get its images
+          if (appraisalData._id) {
+            const existingAppraisal = await AppraisalSchema.findById(appraisalData._id);
+            appraisalData.images = existingAppraisal ? [...existingAppraisal.images] : [];
+          } else {
+            appraisalData.images = [];
+          }
         }
       }
       
-      // Add the new image to the images array
+      // Always add the new image to the images array
       appraisalData.images.push(imageUrl);
-      
-      console.log(`Image uploaded successfully, URL: ${imageUrl}`);
+      console.log(`Added new image to images array. Now contains ${appraisalData.images.length} images.`);
     }
     
     // Ensure timestamp is set
@@ -444,6 +537,11 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     if (!isAdmin || !appraisalData.userId) {
       appraisalData.userId = userId;
     }
+    
+    // Deduplicate the images array to avoid showing the same image multiple times
+    // We need to keep imageUrl separate as the main image
+    appraisalData.images = deduplicateImages(appraisalData.images);
+    console.log(`Final images array after deduplication: ${appraisalData.images.length} images`);
     
     // Verify required fields
     const requiredFields = ['name', 'category', 'condition', 'estimatedValue', 'appraisal'];
@@ -525,64 +623,109 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
   }
 });
 
-// Update endpoint with image upload
+// Update an appraisal
 router.put('/:id', auth, upload.single('image'), async (req, res) => {
   try {
-    const userId = req.user.id;
-    const isAdmin = req.user.role === 'admin';
+    console.log(`PUT /${req.params.id} - Update appraisal`);
+    console.log('User ID from auth:', req.user?.id);
     const appraisalId = req.params.id;
     
-    console.log(`Updating appraisal ${appraisalId} with multipart form data`);
+    // Debug logging
     console.log('Form fields:', req.body);
-    console.log('File:', req.file);
+    if (req.file) {
+      console.log('Uploaded file:', req.file.filename);
+    } else {
+      console.log('No file uploaded with this request');
+    }
     
-    // First check if the appraisal exists and user has permission
+    // Get the existing appraisal data first
     const existingAppraisal = await AppraisalSchema.findById(appraisalId);
-    
     if (!existingAppraisal) {
       return res.status(404).json({ message: 'Appraisal not found' });
     }
     
-    if (existingAppraisal.userId.toString() !== userId && !isAdmin) {
+    // Check ownership or admin status for permission
+    if (req.user.role !== 'admin' && existingAppraisal.userId !== req.user.id) {
+      console.log('Permission denied - user is not the owner or admin');
+      console.log('Appraisal userId:', existingAppraisal.userId);
+      console.log('Request user id:', req.user.id);
       return res.status(403).json({ message: 'You do not have permission to update this appraisal' });
     }
     
-    // Parse any JSON fields that were sent as strings
-    let appraisalData = { ...req.body };
+    // Parse form fields
+    const appraisalData = { ...req.body };
     
-    // Handle nested JSON objects that might be stringified
-    if (typeof req.body.appraisal === 'string') {
-      try {
-        appraisalData.appraisal = JSON.parse(req.body.appraisal);
-      } catch (err) {
-        console.error('Error parsing appraisal JSON:', err);
-      }
-    }
+    // Debug existing images
+    console.log('Existing imageUrl:', existingAppraisal.imageUrl);
+    console.log('Existing images array:', existingAppraisal.images);
     
-    // Add image URL if file was uploaded
-    if (req.file) {
-      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-      appraisalData.imageUrl = imageUrl;
-      
-      // Initialize or update images array
-      if (!appraisalData.images) {
-        appraisalData.images = [];
-      } else if (typeof appraisalData.images === 'string') {
+    // Handle nested JSON objects in form data
+    ['item', 'location', 'condition', 'pricing', 'review', 'specs', 'appraisal'].forEach(field => {
+      if (typeof appraisalData[field] === 'string') {
         try {
-          appraisalData.images = JSON.parse(appraisalData.images);
-        } catch (err) {
-          appraisalData.images = [];
+          appraisalData[field] = JSON.parse(appraisalData[field]);
+        } catch (e) {
+          console.log(`Error parsing ${field} JSON:`, e.message);
         }
       }
-      
-      // Add the new image to the images array
-      appraisalData.images.push(imageUrl);
-      
-      console.log(`Image uploaded successfully, URL: ${imageUrl}`);
+    });
+    
+    // Parse images array if it's a string
+    if (typeof appraisalData.images === 'string') {
+      try {
+        console.log('Parsing images string:', appraisalData.images);
+        appraisalData.images = JSON.parse(appraisalData.images);
+        console.log('Parsed images array:', appraisalData.images);
+      } catch (e) {
+        console.log('Error parsing images JSON:', e.message);
+        // Initialize as empty array if parsing fails
+        appraisalData.images = [];
+      }
     }
     
-    // Ensure ID is set correctly
-    appraisalData._id = appraisalId;
+    // If no images array provided in the request, use existing images from database
+    if (!appraisalData.images || !Array.isArray(appraisalData.images)) {
+      console.log('No images array in request - using existing images from database');
+      appraisalData.images = existingAppraisal.images || [];
+    }
+    
+    // If there's a new file uploaded, add it to the appraisal
+    if (req.file) {
+      const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      console.log('New uploaded image URL:', imageUrl);
+      
+      // Set as main image if requested or if there is no main image
+      const setMainImage = req.body.setMainImage === 'true';
+      if (setMainImage || !existingAppraisal.imageUrl) {
+        console.log('Setting uploaded image as main imageUrl');
+        appraisalData.imageUrl = imageUrl;
+      } else {
+        // Otherwise, keep the existing main image
+        console.log('Preserving existing main imageUrl:', existingAppraisal.imageUrl);
+        appraisalData.imageUrl = existingAppraisal.imageUrl;
+      }
+      
+      // Always add the new image to the images array
+      console.log('Adding new image to images array');
+      appraisalData.images.push(imageUrl);
+      console.log(`Images array now has ${appraisalData.images.length} images`);
+    } else if (!appraisalData.imageUrl) {
+      // If no new image and no imageUrl in request, preserve existing imageUrl
+      console.log('No new image uploaded - preserving existing imageUrl');
+      appraisalData.imageUrl = existingAppraisal.imageUrl;
+    }
+    
+    // Fix imageUrl if it's an array
+    if (Array.isArray(appraisalData.imageUrl)) {
+      console.log('Warning: imageUrl is an array - fixing by taking first element');
+      appraisalData.imageUrl = appraisalData.imageUrl.length > 0 ? appraisalData.imageUrl[0] : '';
+    }
+    
+    // Deduplicate the images array to avoid showing the same image multiple times
+    const originalCount = Array.isArray(appraisalData.images) ? appraisalData.images.length : 0;
+    appraisalData.images = deduplicateImages(appraisalData.images);
+    console.log(`Deduplicated images array: ${originalCount} → ${appraisalData.images.length} images`);
+    console.log('Final images array:', appraisalData.images);
     
     // Update the appraisal
     const updatedAppraisal = await AppraisalSchema.findByIdAndUpdate(
@@ -591,10 +734,10 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
       { new: true }
     );
     
-    console.log('Appraisal updated successfully:', updatedAppraisal._id);
-    res.json(updatedAppraisal);
+    console.log('Appraisal updated successfully');
+    res.status(200).json(updatedAppraisal);
   } catch (error) {
-    console.error('Error updating appraisal with image:', error);
+    console.error('Error updating appraisal:', error);
     res.status(500).json({ message: 'Error updating appraisal', error: error.message });
   }
 });

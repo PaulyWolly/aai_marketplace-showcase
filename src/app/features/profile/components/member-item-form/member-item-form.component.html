@@ -85,41 +85,20 @@
         <div class="form-row image-section">
           <h3>Item Images</h3>
           
+          <!-- Image Gallery Component -->
+          <app-image-gallery
+            [images]="imagesFormArray"
+            [mainImageUrl]="mainImageUrl"
+            (mainImageChange)="onMainImageChange($event)"
+            (imagesChange)="onImagesChange($event)"
+          ></app-image-gallery>
+          
+          <!-- Legacy image upload UI - can be removed after testing -->
           <div class="image-options">
             <button type="button" mat-raised-button color="primary" (click)="openCameraCapture()">
               <mat-icon>photo_camera</mat-icon>
               Take Photo
             </button>
-            
-            <button type="button" mat-raised-button color="accent" (click)="fileInput.click()">
-              <mat-icon>upload</mat-icon>
-              Upload Image
-            </button>
-            
-            <input #fileInput type="file" accept="image/*" style="display: none" (change)="onFileSelected($event)">
-          </div>
-          
-          <div class="images-container" formArrayName="images">
-            <div *ngIf="images.length === 0" class="no-images">
-              <p>No images added yet. Add images using the buttons above.</p>
-            </div>
-            
-            <div *ngFor="let image of images.controls; let i = index" class="image-item">
-              <div class="image-preview">
-                <img [src]="image.value" alt="Item image {{i+1}}">
-              </div>
-              <div class="image-actions">
-                <button type="button" mat-icon-button color="primary" (click)="rotateImage(i, 270)" matTooltip="Rotate left">
-                  <mat-icon>rotate_left</mat-icon>
-                </button>
-                <button type="button" mat-icon-button color="primary" (click)="rotateImage(i, 90)" matTooltip="Rotate right">
-                  <mat-icon>rotate_right</mat-icon>
-                </button>
-                <button type="button" mat-icon-button color="warn" (click)="removeImage(i)" matTooltip="Remove image">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 

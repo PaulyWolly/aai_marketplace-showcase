@@ -21,9 +21,24 @@ export class ShowcaseService {
 
   async getShowcaseItems() {
     try {
+      // Check cache first
+      const cacheKey = 'showcase_items';
+      const cachedItems = this.getFromCache(cacheKey);
+      
+      if (cachedItems) {
+        console.log('Retrieved showcase items from cache');
+        return cachedItems;
+      }
+      
       console.log('Fetching showcase items from:', `${this.apiUrl}/published`);
       const items = await this.http.get<Appraisal[]>(`${this.apiUrl}/published`).toPromise();
       console.log('Received showcase items:', items);
+      
+      // Store in cache
+      if (items) {
+        this.saveToCache(cacheKey, items);
+      }
+      
       return items;
     } catch (error) {
       console.error('Error fetching showcase items:', error);
@@ -33,9 +48,24 @@ export class ShowcaseService {
 
   async getUserItems(userId: string) {
     try {
+      // Check cache first
+      const cacheKey = `user_items_${userId}`;
+      const cachedItems = this.getFromCache(cacheKey);
+      
+      if (cachedItems) {
+        console.log('Retrieved user items from cache for user:', userId);
+        return cachedItems;
+      }
+      
       console.log('Fetching items for user:', userId);
       const items = await this.http.get<Appraisal[]>(`${this.apiUrl}/user/${userId}`).toPromise();
       console.log('Received user items:', items);
+      
+      // Store in cache
+      if (items) {
+        this.saveToCache(cacheKey, items);
+      }
+      
       return items;
     } catch (error) {
       console.error('Error fetching user items:', error);
@@ -74,7 +104,7 @@ export class ShowcaseService {
       try {
         console.log('Attempting fallback - checking published items');
         const publishedItems = await this.getShowcaseItems();
-        const matchingItem = publishedItems?.find(item => item._id === id);
+        const matchingItem = publishedItems?.find((item: Appraisal) => item._id === id);
         
         if (matchingItem) {
           console.log('Found item in published items:', matchingItem);
@@ -133,7 +163,43 @@ export class ShowcaseService {
   }
 
   deleteItem(id: string): Observable<any> {
+    // Clear cache for this item when deleting
+    this.clearCacheForItem(id);
     return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  /**
+   * Clears the entire cache
+   */
+  clearCache(): void {
+    console.log('Clearing entire showcase cache');
+    this.cache.clear();
+  }
+  
+  /**
+   * Clears cache entries related to a specific item
+   * @param itemId The ID of the item to clear from cache
+   */
+  clearCacheForItem(itemId: string): void {
+    console.log(`Clearing cache for item: ${itemId}`);
+    
+    // Clear specific item cache
+    const itemCacheKey = `item_${itemId}`;
+    this.cache.delete(itemCacheKey);
+    
+    // Clear showcase items cache to ensure list views are refreshed
+    this.cache.delete('showcase_items');
+    
+    // Clear any user items caches that might contain this item
+    // This is a more aggressive approach, but ensures consistency
+    const userCacheKeyPattern = 'user_items_';
+    for (const key of Array.from(this.cache.keys())) {
+      if (key.startsWith(userCacheKeyPattern)) {
+        this.cache.delete(key);
+      }
+    }
+    
+    console.log('Cache clearing complete');
   }
 
   // Helper methods for cache

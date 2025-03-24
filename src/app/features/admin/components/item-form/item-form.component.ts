@@ -7,6 +7,7 @@ import { AppraisalService, Appraisal } from '../../../appraisal/services/apprais
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { ImageCaptureDialogComponent } from '../../../../shared/components/image-capture-dialog/image-capture-dialog.component';
 import { environment } from '../../../../../environments/environment';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-item-form',
@@ -31,7 +32,8 @@ export class ItemFormComponent implements OnInit {
     private appraisalService: AppraisalService,
     private categoriesService: CategoriesService,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private authService: AuthService
   ) {
     this.categories = this.categoriesService.categories;
     this.conditions = this.categoriesService.conditions;
@@ -342,40 +344,134 @@ export class ItemFormComponent implements OnInit {
    * Submit form data using multipart/form-data approach
    */
   private submitFormWithMultipart(formData: FormData): Promise<any> {
-    const url = this.isEditMode && this.itemId
-      ? `${environment.apiUrl}/items/${this.itemId}`
-      : `${environment.apiUrl}/items`;
-      
-    const method = this.isEditMode ? 'PUT' : 'POST';
+    // Debug logging for form data
+    console.log('Submitting with multipart form data');
     
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open(method, url);
+    // Use a safer approach to iterate through FormData
+    const formDataKeys: string[] = [];
+    formData.forEach((value, key) => {
+      // Don't log the full image content as it's too large
+      if (key === 'image' || (typeof value === 'string' && value.length > 500)) {
+        console.log(`${key}: [Large binary or string data]`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
+      formDataKeys.push(key);
+    });
+    
+    // Check for required fields
+    const requiredFields = ['name', 'category', 'condition'];
+    const missingFields = requiredFields.filter(field => !formDataKeys.includes(field));
+    if (missingFields.length > 0) {
+      console.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return Promise.reject(new Error(`Missing required fields: ${missingFields.join(', ')}`));
+    }
+    
+    // Capture references to use inside the Promise
+    const router = this.router;
+    const snackBar = this.snackBar;
+    const itemId = this.itemId;
+    const editMode = this.isEditMode;
+    const authService = this.authService;
+    
+    return new Promise<any>((resolve, reject) => {
+      // Construct URL
+      let url = `${environment.apiUrl}/appraisals`;
       
-      // Add auth token
-      const token = localStorage.getItem('token');
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      // For edit mode, include the itemId in the URL path
+      if (editMode && itemId) {
+        url = `${environment.apiUrl}/appraisals/${itemId}`;
+        console.log(`Edit mode URL with itemId: ${url}`);
       }
       
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch (err) {
-            resolve(xhr.responseText);
-          }
-        } else {
-          reject(new Error(`Server returned ${xhr.status}: ${xhr.statusText}`));
+      console.log('Submitting to URL:', url);
+      
+      const xhr = new XMLHttpRequest();
+      xhr.open(editMode ? 'PUT' : 'POST', url);
+      
+      // Get a fresh token to ensure it's not expired
+      const token = authService.getToken();
+      
+      if (!token) {
+        console.error('No authentication token available');
+        snackBar.open('Authentication error: Please log in again', 'Close', { duration: 5000 });
+        authService.logout();
+        router.navigate(['/login']);
+        reject(new Error('No authentication token available'));
+        return;
+      }
+      
+      console.log('Setting Authorization header with token');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      
+      // Add response type for easier parsing
+      xhr.responseType = 'json';
+      
+      // Add progress tracking
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          console.log(`Upload progress: ${percentComplete}%`);
         }
       };
       
-      xhr.onerror = () => {
-        reject(new Error('Network error occurred'));
+      // Add event listeners
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          console.log('XHR success response:', xhr.response);
+          try {
+            // With responseType='json', response is already parsed
+            const response = xhr.response;
+            if (response) {
+              resolve(response);
+            } else {
+              console.warn('Empty response received (status OK)');
+              resolve({success: true});
+            }
+          } catch (err) {
+            console.error('Error handling response:', err);
+            reject(err);
+          }
+        } else {
+          console.error(`Server error: ${xhr.status} ${xhr.statusText}`, xhr.response);
+          
+          let errorDetail = `Server returned ${xhr.status}: ${xhr.statusText}`;
+          
+          // Handle specific error codes
+          if (xhr.status === 401 || xhr.status === 403) {
+            console.error('Authentication error - token may be expired');
+            snackBar.open('Your session has expired. Please log in again.', 'Close', { duration: 5000 });
+            authService.logout();
+            router.navigate(['/login']);
+          } else if (xhr.status === 413) {
+            errorDetail = 'Image is too large to upload. Please use a smaller image.';
+          }
+          
+          reject(new Error(errorDetail));
+        }
       };
       
-      xhr.send(formData);
+      xhr.onerror = function() {
+        console.error('XHR network error');
+        reject(new Error('Network error occurred. Please check your internet connection.'));
+      };
+      
+      xhr.ontimeout = function() {
+        console.error('XHR request timed out');
+        reject(new Error('Request timed out - the image might be too large. Please try a smaller image.'));
+      };
+      
+      // Increase timeout for large requests
+      xhr.timeout = 120000; // 120 seconds
+      
+      // Log that we're about to send
+      console.log('Sending FormData with XHR...');
+      try {
+        xhr.send(formData);
+      } catch (err) {
+        console.error('Error sending XHR request:', err);
+        reject(new Error('Failed to send request: ' + (err as Error).message));
+      }
     });
   }
   

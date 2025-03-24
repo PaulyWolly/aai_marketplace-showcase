@@ -101,6 +101,36 @@ export class ImageCaptureDialogComponent implements OnInit, OnDestroy {
   public handleInitError(error: WebcamInitError): void {
     this.errors.push(error);
     console.error('Webcam initialization error:', error);
+    
+    // Show a more specific error message based on the error type
+    let errorMessage = 'Failed to initialize camera';
+    
+    if (error.mediaStreamError && error.mediaStreamError.name) {
+      switch (error.mediaStreamError.name) {
+        case 'NotFoundError':
+          errorMessage = 'No camera found. Please check your device.';
+          break;
+        case 'NotAllowedError':
+          errorMessage = 'Camera access denied. Please allow camera access in your browser settings.';
+          break;
+        case 'NotReadableError':
+          errorMessage = 'Camera is in use by another application.';
+          break;
+        case 'OverconstrainedError':
+          errorMessage = 'Camera does not meet the required constraints.';
+          break;
+        case 'AbortError':
+          errorMessage = 'Camera access was aborted.';
+          break;
+        default:
+          errorMessage = `Camera error: ${error.mediaStreamError.name}`;
+      }
+    }
+    
+    // Add the error message to the errors array
+    if (!this.errors.find(e => e.message === errorMessage)) {
+      this.errors.push({ message: errorMessage } as WebcamInitError);
+    }
   }
 
   public cameraWasSwitched(deviceId: string): void {
@@ -134,6 +164,7 @@ export class ImageCaptureDialogComponent implements OnInit, OnDestroy {
       if (!this.webcamImage.imageAsDataUrl.startsWith('data:image/')) {
         console.error('Invalid image data format:', 
           this.webcamImage.imageAsDataUrl.substring(0, 30) + '...');
+        this.dialogRef.close({ error: 'Invalid image format' });
         return;
       }
       
@@ -160,6 +191,7 @@ export class ImageCaptureDialogComponent implements OnInit, OnDestroy {
       });
     } catch (err) {
       console.error('Error closing dialog with image data:', err);
+      this.dialogRef.close({ error: 'Failed to process image' });
     }
   }
   
@@ -221,6 +253,12 @@ export class ImageCaptureDialogComponent implements OnInit, OnDestroy {
   }
 
   public cancel(): void {
+    console.log('User cancelled image capture');
+    // Clean up resources
+    this.webcamImage = null;
+    this.showWebcam = false;
+    
+    // Close the dialog without returning any data
     this.dialogRef.close();
   }
 } 

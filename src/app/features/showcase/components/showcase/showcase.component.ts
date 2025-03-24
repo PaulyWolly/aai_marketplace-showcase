@@ -40,6 +40,12 @@ export class ShowcaseComponent implements OnInit {
       this.isAdmin = isAdmin;
     });
     
+    // Clear the cache on init to ensure fresh data
+    if (this.showcaseService['clearCache']) {
+      console.log('Clearing showcase cache on component initialization');
+      this.showcaseService['clearCache']();
+    }
+    
     // Check for userId parameter
     this.route.paramMap.subscribe(params => {
       this.userId = params.get('userId');
@@ -190,5 +196,15 @@ export class ShowcaseComponent implements OnInit {
         (item.appraisal && item.appraisal.details && item.appraisal.details.toLowerCase().includes(searchLower))
       );
     });
+  }
+
+  refreshItems(): void {
+    // Clear the cache first
+    if (this.showcaseService['clearCache']) {
+      this.showcaseService['clearCache']();
+    }
+    
+    // Then reload
+    this.loadItems();
   }
 } 

@@ -20,6 +20,13 @@
     </div>
   </div>
 
+  <!-- Add a refresh button to the top section, near the search or filter controls -->
+  <div class="refresh-button">
+    <button mat-icon-button color="primary" (click)="refreshItems()" matTooltip="Refresh Items List">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
   <mat-card class="filter-card">
     <mat-card-content>
       <div class="search-field">

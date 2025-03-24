@@ -31,6 +31,10 @@ class OpenAIService {
 
     async analyzeImage(imageData) {
         try {
+            console.log('analyzeImage called with data type:', typeof imageData);
+            console.log('imageData length:', imageData ? imageData.length : 'null');
+            console.log('imageData sample:', imageData ? imageData.substring(0, 20) : 'null');
+            
             if (!imageData) {
                 throw new Error('No image data provided');
             }
@@ -52,57 +56,12 @@ class OpenAIService {
             // TEMPORARY: Return hardcoded sample data for testing
             // This bypasses the actual API call to help debug other issues
             return {
-                details: `## Item Identification
-- **Type of item:** Headphones
-- **Brand and model:** The brand logo appears visible but specific details are blurry. However, based on the design it looks similar to models possibly from brands like Logitech or Plantronics, specifically designed for communication or gaming.
-- **Color and design features:** Black color with chrome accents; over-the-ear design with a padded headband and a boom mic, indicating its use for communications or gaming.
-
-## Condition Assessment
-- **Overall condition:** Looks to be in good condition with minimal wear.
-- **Any visible wear or damage:** There is no apparent damage visible in the image, suggesting careful usage.
-- **Age estimation based on appearance:** Likely a few years old given its design and condition, which still appears modern.
-
-## Key Features
-- **Technical specifications:** Specifics like impedance, driver size, and frequency range aren't visible, but it features a boom microphone which typically suggests it's good for communications or gaming.
-- **Notable features:** Includes an adjustable boom microphone and potentially noise-canceling technology. This headset might also feature in-line volume control and mute functions (not visible in the image). It appears to be wired rather than wireless.
-- **Materials used:** Primarily appears to be made from plastic with some parts possibly in metal (chrome sections), foam padding on ear cups and headband.
-
-## Market Value
-- **Estimated price range:** $40-80 USD depending on the exact model and brand.
-- **Factors affecting value:** Brand reputation, specific features (like surround sound capability), and overall condition.
-- **Comparable items in market:** Similar to mid-range gaming headsets from brands like Logitech G, HyperX, or Plantronics.
-
-## Additional Notes
-- **Unique characteristics:** The boom microphone design suggests this is specifically intended for clear voice communication, making it suitable for gaming, video conferencing, or other communication-focused applications.
-- **Authenticity indicators:** Without seeing the brand markings clearly, it's difficult to assess authenticity.
-- **Market demand:** Gaming and communication headsets maintain steady demand, especially with the rise of remote work and online gaming.`,
-                marketResearch: `## Market Trends
-- **Current trends in headphone technology:** The gaming and communication headset market is seeing increased demand for wireless options, better microphone quality, and enhanced comfort for long sessions. RGB lighting and software customization are also becoming standard features in gaming models.
-- **Consumer preferences:** Users are increasingly looking for multi-platform compatibility, durability, and comfort as primary factors when purchasing headsets in this category.
-
-## Price Analysis
-- **Price comparisons:** Mid-range wired gaming/communication headsets typically retail between $40-100 USD across major retailers like Amazon, Best Buy, and manufacturer direct stores.
-- **Price ranges:** New models in this category typically sell for $60-100, while used models in good condition range from $30-60, and refurbished units from reputable sellers fall in the $40-70 range.
-
-## Value Retention
-- **Factors affecting depreciation:** Gaming headsets typically depreciate 30-50% in the first year after release, with factors like brand reputation, build quality, and feature set affecting the depreciation rate.
-- **Long-term value prediction:** This style of headset will likely continue to depreciate gradually, retaining approximately 20-30% of its original value after 3-4 years if maintained in good condition.
-
-## Showcase Insights
-- **Best platforms for buying/selling:** For used gaming peripherals, platforms like eBay, r/hardwareswap on Reddit, and Facebook Showcase offer the best combination of audience reach and reasonable fees.
-- **Regional price variations:** North American and European markets typically command higher prices for gaming peripherals compared to Asian markets where similar products might be available at lower price points.
-
-## Comparable Alternatives
-- **Similar models:** Comparable products include the Logitech G432 ($50-80), HyperX Cloud II ($70-100), and Razer Kraken ($60-90), all offering similar functionality and build quality.
-- **Competitive advantages/disadvantages:** Without knowing the exact model, it's difficult to assess specific advantages, but the wired connection offers reliability while lacking the convenience of wireless options that are becoming increasingly popular.
-
-## Investment Potential
-- **Collectibility factors:** Standard gaming headsets generally have minimal collectible value unless they are limited editions or associated with popular esports teams or events.
-- **Future market outlook:** The market for wired headsets is gradually shrinking as wireless technology improves, but there remains a steady demand from users who prefer the reliability and lower latency of wired connections, particularly in competitive gaming scenarios.`,
-                name: "Gaming Headset",
-                category: "Electronics",
-                condition: "Good",
-                estimatedValue: "$40-80"
+                details: `## DEBUG INFO\n- Image data type: ${typeof imageData}\n- Image data length: ${imageData.length}\n- Image data sample: ${imageData.substring(0, 50)}...\n\n## Item Identification\n- **Type of item:** Test Item\n- **Brand and model:** Debug Model\n- **Color and design features:** N/A\n\n## Condition Assessment\n- **Overall condition:** Debug\n- **Any visible wear or damage:** None\n- **Age estimation based on appearance:** N/A`,
+                marketResearch: `## Debug Market Research\n- This is a debug response.\n- No actual analysis was performed.`,
+                name: "Debug Item",
+                category: "Test",
+                condition: "Debug",
+                estimatedValue: "N/A"
             };
 
             /* UNCOMMENT THIS SECTION WHEN API IS WORKING PROPERLY
@@ -161,10 +120,15 @@ class OpenAIService {
             */
         } catch (error) {
             console.error('Error analyzing image:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
             
             // Return a fallback response with error details
             return {
-                details: `## Error Analyzing Image\n\nWe encountered an error while analyzing your image. Please try again later.\n\nError details: ${error.message}`,
+                details: `## Error Analyzing Image\n\nWe encountered an error while analyzing your image. Please try again later.\n\nError details: ${error.message}\n\nStack: ${error.stack}`,
                 marketResearch: `## Market Research Unavailable\n\nMarket research is currently unavailable due to a technical issue. Please try again later.`,
                 name: "Analysis Failed",
                 category: "Error",
