@@ -1,30 +1,86 @@
-# Marketplace
+# AI-Driven Platform
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 15.2.11.
+A modern, AI-driven platform that leverages machine learning and data integration to provide intelligent insights and automation.
 
-## Development server
+## Project Structure
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+```
+.
+├── backend/                 # Python FastAPI backend
+│   ├── app/                # Main application code
+│   │   ├── api/           # API endpoints
+│   │   ├── core/          # Core functionality
+│   │   ├── models/        # ML models
+│   │   └── services/      # Business logic
+│   ├── tests/             # Backend tests
+│   └── requirements.txt    # Python dependencies
+├── frontend/               # Angular frontend
+│   ├── src/               # Source code
+│   │   ├── app/          # Application components
+│   │   ├── core/         # Core services
+│   │   └── shared/       # Shared components
+│   └── package.json       # Frontend dependencies
+└── data/                  # Data processing pipeline
+    ├── collectors/        # Data collection scripts
+    ├── processors/        # Data processing scripts
+    └── storage/          # Data storage
+```
 
-## Code scaffolding
+## Features
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+- AI/ML-powered insights and predictions
+- Data integration from multiple sources
+- Real-time processing and analysis
+- Modern, responsive UI
+- Scalable architecture
 
-## Build
+## Getting Started
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+### Backend Setup
 
-## Running unit tests
+1. Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-## Running end-to-end tests
+3. Run the development server:
+```bash
+uvicorn app.main:app --reload
+```
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+### Frontend Setup
 
-## Further help
+1. Install dependencies:
+```bash
+cd frontend
+npm install
+```
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
-# aai_marketplace-showcase
+2. Run the development server:
+```bash
+ng serve
+```
 
-This app was originally created as "AAI_Marketplace" but will be changing to "AAI_Showcase"
+## Development
+
+- Backend API documentation available at `/docs` when running the server
+- Frontend follows Angular best practices and component architecture
+- Data pipeline supports multiple data sources and formats
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+MIT License - see LICENSE file for details

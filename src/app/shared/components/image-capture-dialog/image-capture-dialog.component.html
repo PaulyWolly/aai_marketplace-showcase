@@ -11,7 +11,7 @@
       </button>
     </div>
 
-    <div *ngIf="multipleWebcamsAvailable && errors.length === 0" class="camera-selection">
+    <div *ngIf="availableDevices.length > 0 && errors.length === 0" class="camera-selection">
       <mat-form-field appearance="outline" class="compact-field">
         <mat-label>Select Camera</mat-label>
         <mat-select [value]="deviceId" (selectionChange)="changeWebcam($event.value)">
@@ -19,7 +19,7 @@
             {{device.label || 'Camera ' + (i+1)}}
           </mat-option>
         </mat-select>
-        <mat-hint>Choose between front/back camera on mobile</mat-hint>
+        <mat-hint>Choose which camera to use</mat-hint>
       </mat-form-field>
     </div>
 

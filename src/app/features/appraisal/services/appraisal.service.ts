@@ -93,8 +93,27 @@ export class AppraisalService {
    * Save a web appraisal result as a permanent appraisal
    */
   saveWebAppraisal(webAppraisal: WebAppraisalResult): Observable<Appraisal> {
-    console.log('Saving web appraisal:', webAppraisal);
-    return this.http.post<Appraisal>(`${this.apiUrl}/web`, webAppraisal)
+    console.log('Converting web appraisal to standard format:', webAppraisal);
+    
+    // Convert web appraisal to standard format
+    const standardAppraisal = {
+      name: webAppraisal.aggregatedResult.suggestedName,
+      category: webAppraisal.aggregatedResult.suggestedCategory,
+      condition: webAppraisal.aggregatedResult.suggestedCondition,
+      estimatedValue: `${webAppraisal.aggregatedResult.estimatedValueRange.min} - ${webAppraisal.aggregatedResult.estimatedValueRange.max}`,
+      imageUrl: webAppraisal.imageUrl,
+      appraisal: {
+        details: webAppraisal.aggregatedResult.suggestedDescription,
+        marketResearch: webAppraisal.sources.map(s => `${s.name}: ${s.description}`).join('\n\n')
+      },
+      isPublished: false,
+      timestamp: new Date()
+    };
+
+    console.log('Saving converted appraisal:', standardAppraisal);
+    
+    // Use the standard save endpoint
+    return this.http.post<Appraisal>(`${this.apiUrl}/save`, standardAppraisal)
       .pipe(
         tap(result => {
           if (result && result._id) {

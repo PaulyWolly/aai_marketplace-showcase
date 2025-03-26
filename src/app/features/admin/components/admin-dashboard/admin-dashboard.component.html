@@ -25,6 +25,13 @@
       <mat-icon>password</mat-icon>
       Password Management
     </button>
+    <button mat-raised-button 
+            [class.active]="selectedSection === 'settings'"
+            (click)="selectSection('settings')" 
+            class="nav-button">
+      <mat-icon>settings</mat-icon>
+      System Settings
+    </button>
   </div>
 
   <!-- Content Section -->
@@ -44,7 +51,7 @@
             <mat-icon>add</mat-icon>
             Add New Item
           </button>
-          <button mat-raised-button color="accent" routerLink="/appraisal/capture">
+          <button mat-raised-button color="accent" routerLink="/appraisal/new">
             <mat-icon>photo_camera</mat-icon>
             Appraise New Item
           </button>
@@ -126,6 +133,43 @@
                   </button>
                 </mat-card-actions>
               </mat-card>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <!-- System Settings Section -->
+    <div *ngIf="selectedSection === 'settings'" class="section-content">
+      <div class="settings-management-container">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>System Settings</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="settings-section">
+              <h3>Environment Settings</h3>
+              <p>Toggle between development and production modes. This affects how the application processes appraisals and interacts with external services.</p>
+              
+              <div class="environment-toggle">
+                <mat-slide-toggle
+                  [checked]="isProductionMode"
+                  (change)="toggleEnvironmentMode()"
+                  color="primary">
+                  {{ isProductionMode ? 'Production Mode' : 'Development Mode' }}
+                </mat-slide-toggle>
+                
+                <div class="mode-description">
+                  <p *ngIf="isProductionMode">
+                    <mat-icon color="warn">warning</mat-icon>
+                    Production mode is active. The system will use real appraisal services.
+                  </p>
+                  <p *ngIf="!isProductionMode">
+                    <mat-icon color="primary">info</mat-icon>
+                    Development mode is active. The system uses mock data for appraisals and testing.
+                  </p>
+                </div>
+              </div>
             </div>
           </mat-card-content>
         </mat-card>

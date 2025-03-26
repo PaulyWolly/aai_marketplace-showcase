@@ -14,6 +14,7 @@ import { SharedModule } from '../../../../shared/shared.module';
 import { ShowcaseService } from '../../../../features/showcase/services/showcase.service';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ImageGalleryComponent } from '../../../../shared/components/image-gallery/image-gallery.component';
+import { MLService } from '../../../../core/services/ml.service';
 
 @Component({
   selector: 'app-member-item-form',
@@ -30,6 +31,9 @@ export class MemberItemFormComponent implements OnInit, OnDestroy {
   categories: string[];
   conditions: string[];
   appraisal: any;
+  mlPredictions: any = null;
+  imageClassification: any = null;
+  similarItems: any[] = [];
 
   // Placeholder transparent image data URL to use when a real image isn't available
   private placeholderImage = 'data:image/png;base64,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';
@@ -48,7 +52,8 @@ export class MemberItemFormComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private http: HttpClient,
-    private showcaseService: ShowcaseService
+    private showcaseService: ShowcaseService,
+    private mlService: MLService
   ) {
     this.categories = this.categoriesService.categories;
     this.conditions = this.categoriesService.conditions;
@@ -659,6 +664,22 @@ export class MemberItemFormComponent implements OnInit, OnDestroy {
       data['imageUrl'] = imageUrl; // Update the data object too
     }
     
+    // Create the item object with required fields
+    const item = {
+      name: data['name'] || '',
+      category: data['category'] || '',
+      condition: data['condition'] || '',
+      estimatedValue: data['estimatedValue'] || '0',
+      height: data['height'] || '',
+      width: data['width'] || '',
+      weight: data['weight'] || '',
+      imageUrl: imageUrl || '',
+      images: data['images'] || []
+    };
+    
+    // Add the item object to form data
+    formData.append('item', JSON.stringify(item));
+    
     // Add all non-image form fields
     Object.keys(data).forEach(key => {
       if (key !== 'images') {
@@ -708,7 +729,8 @@ export class MemberItemFormComponent implements OnInit, OnDestroy {
       itemId: this.itemId,
       userId: this.appraisal?.userId,
       hasImage: formData.has('image'),
-      imageUrl: formData.get('imageUrl')
+      imageUrl: formData.get('imageUrl'),
+      item: formData.get('item')
     });
     
     try {
@@ -1325,5 +1347,101 @@ export class MemberItemFormComponent implements OnInit, OnDestroy {
    */
   onImagesChange(newImages: FormArray) {
     this.imagesFormArray = newImages;
+  }
+
+  /**
+   * Get price prediction for the current item
+   */
+  async getPricePrediction(): Promise<void> {
+    try {
+      const formData = this.itemForm.value;
+      const predictionData = [{
+        id: formData._id || 'new',
+        height: parseFloat(formData.height) || 0,
+        width: parseFloat(formData.width) || 0,
+        weight: parseFloat(formData.weight) || 0,
+        category: formData.category,
+        condition: formData.condition,
+        age: parseFloat(formData.age) || 0,
+        rarity: parseFloat(formData.rarity) || 0.5,
+        estimatedValue: parseFloat(formData.estimatedValue) || 0
+      }];
+
+      this.mlService.predictPrice(predictionData).subscribe(
+        (predictions) => {
+          this.mlPredictions = predictions[0];
+          this.snackBar.open(
+            `Predicted value: $${this.mlPredictions.predicted_value.toFixed(2)} (${(this.mlPredictions.confidence * 100).toFixed(1)}% confidence)`,
+            'Close',
+            { duration: 5000 }
+          );
+        },
+        (error) => {
+          console.error('Price prediction error:', error);
+          this.snackBar.open('Failed to get price prediction', 'Close', { duration: 3000 });
+        }
+      );
+    } catch (error) {
+      console.error('Error preparing price prediction:', error);
+      this.snackBar.open('Error preparing price prediction', 'Close', { duration: 3000 });
+    }
+  }
+
+  /**
+   * Classify the current item's image
+   */
+  async classifyCurrentImage(): Promise<void> {
+    try {
+      const imageUrl = this.itemForm.get('imageUrl')?.value;
+      if (!imageUrl) {
+        this.snackBar.open('No image available for classification', 'Close', { duration: 3000 });
+        return;
+      }
+
+      this.mlService.classifyImage(imageUrl).subscribe(
+        (classification) => {
+          this.imageClassification = classification;
+          this.snackBar.open(
+            `Classified as: ${classification.category} (${(classification.confidence * 100).toFixed(1)}% confidence)`,
+            'Close',
+            { duration: 5000 }
+          );
+        },
+        (error) => {
+          console.error('Image classification error:', error);
+          this.snackBar.open('Failed to classify image', 'Close', { duration: 3000 });
+        }
+      );
+    } catch (error) {
+      console.error('Error preparing image classification:', error);
+      this.snackBar.open('Error preparing image classification', 'Close', { duration: 3000 });
+    }
+  }
+
+  /**
+   * Find similar items
+   */
+  async findSimilarItems(): Promise<void> {
+    try {
+      const itemId = this.itemForm.get('_id')?.value;
+      if (!itemId) {
+        this.snackBar.open('Cannot find similar items for unsaved items', 'Close', { duration: 3000 });
+        return;
+      }
+
+      this.mlService.findSimilarItems(itemId).subscribe(
+        (items) => {
+          this.similarItems = items;
+          this.snackBar.open(`Found ${items.length} similar items`, 'Close', { duration: 3000 });
+        },
+        (error) => {
+          console.error('Similar items error:', error);
+          this.snackBar.open('Failed to find similar items', 'Close', { duration: 3000 });
+        }
+      );
+    } catch (error) {
+      console.error('Error finding similar items:', error);
+      this.snackBar.open('Error finding similar items', 'Close', { duration: 3000 });
+    }
   }
 } 

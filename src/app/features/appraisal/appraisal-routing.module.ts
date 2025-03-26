@@ -10,10 +10,10 @@ const routes: Routes = [
   {
     path: '',
     children: [
-      { path: '', redirectTo: 'capture', pathMatch: 'full' },
+      { path: '', redirectTo: 'new', pathMatch: 'full' },
       { 
-        path: 'capture',
-        component: AppraisalCaptureComponent,
+        path: 'new',
+        component: WebAppraisalComponent,
         canActivate: [AuthGuard]
       },
       { 
@@ -30,12 +30,6 @@ const routes: Routes = [
         path: 'view/:id',
         component: AppraisalResultsComponent,
         canActivate: [AuthGuard]
-      },
-      {
-        path: 'web',
-        component: WebAppraisalComponent,
-        canActivate: [AuthGuard],
-        data: { title: 'Web Appraisal' }
       }
     ]
   }
