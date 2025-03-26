@@ -1,1 +1,1 @@
-{"height":{"min":25,"max":50},"width":{"min":18,"max":40},"weight":{"min":1.8,"max":5},"age":{"min":30,"max":100},"price":{"min":800,"max":5000,"mean":2686.6666666666665,"std":1335.0988311315718}}
+{"height":{"min":25,"max":60},"width":{"min":15,"max":40},"weight":{"min":1.5,"max":5},"age":{"min":30,"max":100},"price":{"min":200,"max":2500,"mean":1100,"std":886.0022573334675},"colors":["Red","Purple","Orange","Gold","Silver","Bronze"]}

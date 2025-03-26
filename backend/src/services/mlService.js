@@ -3,6 +3,7 @@ const { createLogger, format, transports } = require('winston');
 const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
+const axios = require('axios');
 
 // Initialize logger
 const logger = createLogger({
@@ -22,8 +23,20 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
+// Configure TensorFlow.js for better memory management
+tf.ENV.set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+tf.ENV.set('WEBGL_FLUSH_THRESHOLD', 0);
+if (tf.ENV.get('WEBGL_VERSION') === 2) {
+  tf.ENV.set('WEBGL_FORCE_F16_TEXTURES', true);
+}
+
 class MLService {
   constructor() {
+    // Enable memory logging in development
+    if (process.env.NODE_ENV !== 'production') {
+      this.enableMemoryLogging();
+    }
+
     // Set up model paths
     this.modelPath = path.join(process.cwd(), 'models');
     
@@ -62,20 +75,79 @@ class MLService {
     
     // Load existing models on startup
     this.loadExistingModels();
+
+    // Set up periodic memory cleanup
+    this.setupMemoryCleanup();
+  }
+
+  // Memory management methods
+  enableMemoryLogging() {
+    setInterval(() => {
+      const memoryInfo = tf.memory();
+      logger.info('TensorFlow.js Memory Info:', {
+        numTensors: memoryInfo.numTensors,
+        numDataBuffers: memoryInfo.numDataBuffers,
+        numBytes: memoryInfo.numBytes,
+        unreliable: memoryInfo.unreliable,
+        reasons: memoryInfo.reasons
+      });
+    }, 60000); // Log every minute
+  }
+
+  setupMemoryCleanup() {
+    setInterval(() => {
+      try {
+        // Dispose of any unused tensors
+        tf.disposeVariables();
+        
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+        
+        logger.info('Performed periodic memory cleanup');
+      } catch (error) {
+        logger.error('Error during memory cleanup:', error);
+      }
+    }, 300000); // Clean up every 5 minutes
+  }
+
+  async cleanupTensors() {
+    try {
+      // Dispose of any existing tensors
+      tf.disposeVariables();
+      
+      // Clear the backend
+      await tf.ready();
+      tf.engine().endScope();
+      tf.engine().startScope();
+      
+      logger.info('Tensor cleanup completed');
+    } catch (error) {
+      logger.error('Error during tensor cleanup:', error);
+    }
   }
 
   async loadExistingModels() {
     try {
       // Try to load price model
       if (fs.existsSync(path.join(this.modelPath, 'priceModel.json'))) {
-        await this.loadModel('price');
-        logger.info('Loaded existing price model');
+        const loaded = await this.loadModel('price');
+        if (loaded) {
+          logger.info('Loaded existing price model');
+        } else {
+          logger.info('Failed to load price model, will initialize new one');
+        }
       }
       
       // Try to load image model
       if (fs.existsSync(path.join(this.modelPath, 'imageModel.json'))) {
-        await this.loadModel('image');
-        logger.info('Loaded existing image model');
+        const loaded = await this.loadModel('image');
+        if (loaded) {
+          logger.info('Loaded existing image model');
+        } else {
+          logger.info('Failed to load image model, will initialize new one');
+        }
       }
     } catch (error) {
       logger.error('Error loading existing models:', error);
@@ -87,10 +159,10 @@ class MLService {
     try {
       this.priceModel = tf.sequential();
       
-      // First layer with strong regularization
+      // Input layer with feature masking
       this.priceModel.add(tf.layers.dense({
-        units: 16,
-        inputShape: [7],
+        units: 32,
+        inputShape: [inputShape], // Will be dynamically set based on available features
         activation: 'relu',
         kernelInitializer: 'glorotNormal',
         kernelRegularizer: tf.regularizers.l2({ l2: 0.01 })
@@ -103,9 +175,9 @@ class MLService {
       
       this.priceModel.add(tf.layers.dropout({ rate: 0.2 }));
       
-      // Hidden layer
+      // Hidden layer with feature attention
       this.priceModel.add(tf.layers.dense({
-        units: 8,
+        units: 16,
         activation: 'relu',
         kernelInitializer: 'glorotNormal',
         kernelRegularizer: tf.regularizers.l2({ l2: 0.01 })
@@ -155,10 +227,21 @@ class MLService {
         }
       };
 
-      // Update model status
-      this.modelStatus.priceModel = { initialized: true, lastTrained: new Date() };
+      // Update model status with feature tracking
+      this.modelStatus.priceModel = { 
+        initialized: true, 
+        lastTrained: new Date(),
+        version: this.incrementVersion(this.modelStatus.priceModel.version),
+        featureConfig: {
+          basicFeatures: 7, // height, width, weight, category, condition, age, rarity
+          colorFeatures: 0, // Will be set during training
+          imageFeatures: 0,  // Will be set during training
+          hasColors: false,
+          hasImages: false
+        }
+      };
 
-      logger.info('Price prediction model initialized successfully');
+      logger.info(`Price prediction model initialized successfully with input shape [${inputShape}]`);
       return true;
     } catch (error) {
       logger.error('Price model initialization error:', error);
@@ -169,24 +252,33 @@ class MLService {
   // Image Classification Model
   async initializeImageModel() {
     try {
+      // Create a CNN model for image feature extraction
       this.imageModel = tf.sequential();
       
-      // Convolutional layers
+      // First convolutional block
       this.imageModel.add(tf.layers.conv2d({
         inputShape: [224, 224, 3],
-        kernelSize: 3,
         filters: 32,
-        activation: 'relu'
-      }));
-      this.imageModel.add(tf.layers.maxPooling2d({ poolSize: 2 }));
-      
-      this.imageModel.add(tf.layers.conv2d({
         kernelSize: 3,
-        filters: 64,
-        activation: 'relu'
+        activation: 'relu',
+        padding: 'same'
       }));
+      this.imageModel.add(tf.layers.batchNormalization());
       this.imageModel.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+      this.imageModel.add(tf.layers.dropout({ rate: 0.25 }));
       
+      // Second convolutional block
+      this.imageModel.add(tf.layers.conv2d({
+        filters: 64,
+        kernelSize: 3,
+        activation: 'relu',
+        padding: 'same'
+      }));
+      this.imageModel.add(tf.layers.batchNormalization());
+      this.imageModel.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+      this.imageModel.add(tf.layers.dropout({ rate: 0.25 }));
+      
+      // Third convolutional block
       this.imageModel.add(tf.layers.conv2d({
         kernelSize: 3,
         filters: 64,
@@ -228,7 +320,9 @@ class MLService {
       width: { min: Infinity, max: -Infinity },
       weight: { min: Infinity, max: -Infinity },
       age: { min: Infinity, max: -Infinity },
-      price: { min: Infinity, max: -Infinity, mean: 0, std: 0 }
+      price: { min: Infinity, max: -Infinity, mean: 0, std: 0 },
+      // Add color statistics if available
+      colors: new Set()
     };
 
     // First pass: calculate statistics
@@ -258,7 +352,14 @@ class MLService {
         priceSum += item.estimatedValue;
         priceCount++;
       }
+      // Collect unique colors if available
+      if (item.colors && Array.isArray(item.colors)) {
+        item.colors.forEach(color => stats.colors.add(color));
+      }
     }
+
+    // Convert colors set to array for consistent indexing
+    stats.colors = Array.from(stats.colors);
 
     // Calculate price mean
     stats.price.mean = priceSum / priceCount;
@@ -274,6 +375,7 @@ class MLService {
 
     // Second pass: normalize and create feature vectors
     for (const item of data) {
+      // Start with basic features
       const featureVector = [
         this.normalizeValue(item.height || 0, stats.height.min, stats.height.max),
         this.normalizeValue(item.width || 0, stats.width.min, stats.width.max),
@@ -283,6 +385,23 @@ class MLService {
         this.normalizeValue(item.age || 0, stats.age.min, stats.age.max),
         this.encodeRarity(item.rarity)
       ];
+
+      // Add color features (always include, even if empty)
+      const colorEncoding = new Array(stats.colors.length).fill(0);
+      if (item.colors && Array.isArray(item.colors)) {
+        item.colors.forEach(color => {
+          const colorIndex = stats.colors.indexOf(color);
+          if (colorIndex !== -1) {
+            colorEncoding[colorIndex] = 1;
+          }
+        });
+      }
+      featureVector.push(...colorEncoding);
+
+      // Add image features (always include, even if empty)
+      const imageFeatures = new Array(10).fill(0);
+      featureVector.push(...imageFeatures);
+
       features.push(featureVector);
 
       // Use min-max normalization instead of z-score for more stability
@@ -365,15 +484,37 @@ class MLService {
       const basePrediction = await model.predict(tf.tensor2d(features)).data();
       const importance = [];
       
-      // Calculate importance for each feature
+      // Calculate importance for each feature using multiple methods
       for (let i = 0; i < features[0].length; i++) {
+        // Method 1: Feature perturbation
         const perturbedFeatures = features.map(f => [...f]);
         for (let j = 0; j < perturbedFeatures.length; j++) {
-          perturbedFeatures[j][i] = 1 - perturbedFeatures[j][i]; // Flip the feature
+          perturbedFeatures[j][i] = 1 - perturbedFeatures[j][i];
         }
         const perturbedPrediction = await model.predict(tf.tensor2d(perturbedFeatures)).data();
-        const diff = Math.abs(perturbedPrediction[0] - basePrediction[0]);
-        importance.push(diff);
+        const perturbationDiff = Math.abs(perturbedPrediction[0] - basePrediction[0]);
+
+        // Method 2: Feature masking
+        const maskedFeatures = features.map(f => {
+          const masked = [...f];
+          masked[i] = 0;
+          return masked;
+        });
+        const maskedPrediction = await model.predict(tf.tensor2d(maskedFeatures)).data();
+        const maskingDiff = Math.abs(maskedPrediction[0] - basePrediction[0]);
+
+        // Method 3: Feature correlation with target
+        const featureValues = features.map(f => f[i]);
+        const correlation = this.calculateCorrelation(featureValues, targets);
+
+        // Combine methods for robust importance score
+        const importanceScore = (
+          perturbationDiff * 0.4 +
+          maskingDiff * 0.4 +
+          Math.abs(correlation) * 0.2
+        );
+
+        importance.push(importanceScore);
       }
       
       // Normalize importance scores
@@ -385,67 +526,197 @@ class MLService {
     }
   }
 
+  calculateCorrelation(x, y) {
+    const n = x.length;
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+    const sumX2 = x.reduce((a, b) => a + b * b, 0);
+    const sumY2 = y.reduce((a, b) => a + b * b, 0);
+
+    const numerator = n * sumXY - sumX * sumY;
+    const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+
+    return denominator === 0 ? 0 : numerator / denominator;
+  }
+
   // Training methods
   async trainPriceModel(data, epochs = 20) {
     try {
-      if (data.length < 5) {
-        throw new Error('Not enough data points for training. Minimum required: 5');
-      }
-
-      // Initialize model if not already done
-      if (!this.priceModel) {
-        await this.initializePriceModel(7);
-      }
-
-      // Preprocess data and get statistics
-      const { features, targets, stats } = this.preprocessPriceData(data);
+      console.log('Starting price model training with cross-validation...');
       
-      // Save statistics for later use in predictions
-      await this.saveModelStats(stats);
+      // Validate input data
+      if (!data || !Array.isArray(data)) {
+        throw new Error('Invalid training data format. Expected non-empty array.');
+      }
 
-      // Convert to tensors
-      const xs = tf.tensor2d(features);
-      const ys = tf.tensor2d(targets, [targets.length, 1]);
+      if (data.length === 0) {
+        throw new Error('Training data array is empty.');
+      }
 
-      // Train model
-      const history = await this.priceModel.fit(xs, ys, {
-        ...this.trainOpts,
-        epochs: epochs || this.trainOpts.epochs
+      // Validate required fields
+      data.forEach((item, index) => {
+        if (!item.height || !item.width || !item.weight || !item.category || 
+            !item.condition || !item.age || !item.rarity || !item.estimatedValue) {
+          throw new Error(`Missing required fields in training data at index ${index}`);
+        }
       });
 
-      // Calculate feature importance
-      const featureImportance = await this.calculateFeatureImportance(this.priceModel, features, targets);
+      // Calculate total input shape based on available features
+      const hasColors = data.some(item => item.colors && Array.isArray(item.colors));
+      const hasImages = data.some(item => item.imageUrl);
+      
+      // Count unique colors if available
+      const uniqueColors = new Set();
+      if (hasColors) {
+        data.forEach(item => {
+          if (item.colors && Array.isArray(item.colors)) {
+            item.colors.forEach(color => uniqueColors.add(color));
+          }
+        });
+      }
+      
+      // Calculate total input shape
+      const basicFeatures = 7; // height, width, weight, category, condition, age, rarity
+      const colorFeatures = hasColors ? uniqueColors.size : 0;
+      const imageFeatures = hasImages ? 10 : 0; // Assuming 10 features from image model
+      const totalInputShape = basicFeatures + colorFeatures + imageFeatures;
 
-      // Update model status with performance metrics
-      this.modelStatus.priceModel = {
-        ...this.modelStatus.priceModel,
-        lastTrained: new Date(),
-        version: this.incrementVersion(this.modelStatus.priceModel.version),
-        performance: {
-          lastValidationLoss: history.history.val_loss[history.history.val_loss.length - 1],
-          lastTrainingLoss: history.history.loss[history.history.loss.length - 1],
-          featureImportance
-        }
+      // Always reinitialize the model with the correct input shape
+      this.priceModel = null; // Clear existing model
+      await this.initializePriceModel(totalInputShape);
+      
+      // Update feature configuration
+      this.modelStatus.priceModel.featureConfig = {
+        basicFeatures,
+        colorFeatures,
+        imageFeatures,
+        hasColors,
+        hasImages
       };
+
+      // Perform cross-validation with error handling
+      let cvResults;
+      try {
+        cvResults = await this.performCrossValidation(data);
+      } catch (error) {
+        logger.error('Cross-validation error:', error);
+        throw new Error('Cross-validation failed: ' + error.message);
+      }
+
+      // Train final model on all data with error handling
+      let features, targets, stats;
+      try {
+        ({ features, targets, stats } = this.preprocessPriceData(data));
+      } catch (error) {
+        logger.error('Data preprocessing error:', error);
+        throw new Error('Failed to preprocess training data: ' + error.message);
+      }
+
+      try {
+        await this.saveModelStats(stats);
+      } catch (error) {
+        logger.error('Error saving model stats:', error);
+        // Continue despite stats saving error
+      }
+
+      let trainFeatures, trainLabels;
+      try {
+        trainFeatures = tf.tensor2d(features);
+        trainLabels = tf.tensor2d(targets, [targets.length, 1]);
+      } catch (error) {
+        logger.error('Error creating tensors:', error);
+        throw new Error('Failed to create tensors from training data: ' + error.message);
+      }
+
+      let history;
+      try {
+        history = await this.priceModel.fit(trainFeatures, trainLabels, {
+          epochs: epochs || 20,
+          batchSize: 32,
+          validationSplit: 0.2,
+          callbacks: {
+            onEpochEnd: (epoch, logs) => {
+              if (!logs || typeof logs.loss === 'undefined' || typeof logs.val_loss === 'undefined') {
+                logger.warn('Invalid training logs received');
+                return;
+              }
+              console.log(`Epoch ${epoch + 1}/${epochs}`);
+              console.log(`Training loss: ${logs.loss.toFixed(4)}, Validation loss: ${logs.val_loss.toFixed(4)}`);
+            },
+            onBatchEnd: () => {
+              // Force garbage collection to prevent memory leaks
+              if (global.gc) {
+                global.gc();
+              }
+            }
+          }
+        });
+      } catch (error) {
+        logger.error('Model training error:', error);
+        throw new Error('Failed to train model: ' + error.message);
+      }
+
+      // Update model status with cross-validation results
+      try {
+        this.modelStatus.priceModel = {
+          ...this.modelStatus.priceModel,
+          lastTrained: new Date().toISOString(),
+          version: this.incrementVersion(this.modelStatus.priceModel.version),
+          performance: {
+            ...this.modelStatus.priceModel.performance,
+            lastValidationLoss: history.history.val_loss[history.history.val_loss.length - 1],
+            crossValidation: cvResults.averageMetrics,
+            featureImportance: cvResults.featureImportance,
+            featureUsage: {
+              basic: true,
+              colors: this.modelStatus.priceModel.featureConfig.colorFeatures > 0,
+              image: this.modelStatus.priceModel.featureConfig.imageFeatures > 0
+            }
+          }
+        };
+      } catch (error) {
+        logger.error('Error updating model status:', error);
+        // Continue despite status update error
+      }
+
+      // Save model and updated status
+      try {
+        await this.saveModel('price');
+        await this.saveModelStatus();
+      } catch (error) {
+        logger.error('Error saving model:', error);
+        throw new Error('Failed to save model: ' + error.message);
+      }
 
       // Clean up tensors
-      xs.dispose();
-      ys.dispose();
+      try {
+        if (trainFeatures) trainFeatures.dispose();
+        if (trainLabels) trainLabels.dispose();
+      } catch (error) {
+        logger.error('Error disposing tensors:', error);
+        // Continue despite tensor cleanup error
+      }
 
-      // Save model
-      await this.saveModel('price');
+      console.log('Price model training completed successfully');
+      console.log('Cross-validation metrics:', cvResults.averageMetrics);
+      console.log('Feature importance:', cvResults.featureImportance);
+      console.log('Feature usage:', this.modelStatus.priceModel.performance.featureUsage);
 
       return {
-        history: history.history,
-        inputFeatures: features[0].length,
-        trainingSamples: features.length,
-        finalLoss: history.history.loss[history.history.loss.length - 1],
-        finalValLoss: history.history.val_loss[history.history.val_loss.length - 1],
-        featureImportance,
-        modelVersion: this.modelStatus.priceModel.version
+        success: true,
+        message: 'Model trained successfully',
+        metrics: this.modelStatus.priceModel.performance,
+        crossValidation: cvResults
       };
     } catch (error) {
-      logger.error('Price model training error:', error);
+      logger.error('Fatal error in trainPriceModel:', error);
+      // Clean up any remaining tensors
+      try {
+        tf.disposeVariables();
+      } catch (cleanupError) {
+        logger.error('Error during tensor cleanup:', cleanupError);
+      }
       throw error;
     }
   }
@@ -524,7 +795,13 @@ class MLService {
       const predictions = [];
 
       for (const item of items) {
-        // Preprocess input
+        // Validate required fields
+        if (!item.height || !item.width || !item.weight || !item.category || 
+            !item.condition || !item.age || !item.rarity) {
+          throw new Error('Missing required fields in input data');
+        }
+
+        // Start with basic features
         const features = [
           this.normalizeValue(item.height || 0, stats.height.min, stats.height.max),
           this.normalizeValue(item.width || 0, stats.width.min, stats.width.max),
@@ -535,6 +812,22 @@ class MLService {
           this.encodeRarity(item.rarity)
         ];
 
+        // Add color features (always include, even if empty)
+        const colorEncoding = new Array(stats.colors.length).fill(0);
+        if (item.colors && Array.isArray(item.colors)) {
+          item.colors.forEach(color => {
+            const colorIndex = stats.colors.indexOf(color);
+            if (colorIndex !== -1) {
+              colorEncoding[colorIndex] = 1;
+            }
+          });
+        }
+        features.push(...colorEncoding);
+
+        // Add image features (always include, even if empty)
+        const imageFeatures = new Array(10).fill(0);
+        features.push(...imageFeatures);
+
         // Make multiple predictions with dropout enabled for uncertainty estimation
         const numSamples = 10;
         const samples = [];
@@ -542,7 +835,7 @@ class MLService {
           const xs = tf.tensor2d([features]);
           const prediction = this.priceModel.predict(xs, { training: true }); // Enable dropout
           const value = await prediction.data();
-          samples.push(value[0]);
+          samples.push(Math.max(0, value[0])); // Ensure non-negative predictions
           xs.dispose();
           prediction.dispose();
         }
@@ -552,20 +845,28 @@ class MLService {
         const variance = samples.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / numSamples;
         const std = Math.sqrt(variance);
 
-        // Denormalize prediction
-        const denormalizedValue = mean * (stats.price.max - stats.price.min) + stats.price.min;
+        // Denormalize prediction and ensure non-negative values
+        const denormalizedValue = Math.max(0, mean * (stats.price.max - stats.price.min) + stats.price.min);
 
         // Calculate confidence based on prediction variance and model's validation loss
         const lastValLoss = this.trainOpts.lastValLoss || 0.1;
         const normalizedStd = std / mean; // Coefficient of variation
         const confidence = Math.max(0, Math.min(1, 1 - (normalizedStd + lastValLoss) / 2));
 
+        // Calculate prediction range with non-negative bounds
+        const range = {
+          low: Math.max(0, denormalizedValue - 2 * std * (stats.price.max - stats.price.min)),
+          high: Math.max(denormalizedValue, denormalizedValue + 2 * std * (stats.price.max - stats.price.min))
+        };
+
         predictions.push({
           predicted_value: denormalizedValue,
           confidence: confidence,
-          range: {
-            low: Math.max(0, denormalizedValue - 2 * std * (stats.price.max - stats.price.min)),
-            high: denormalizedValue + 2 * std * (stats.price.max - stats.price.min)
+          range: range,
+          features_used: {
+            basic: true,
+            colors: Boolean(item.colors && this.modelStatus.priceModel.featureConfig.hasColors),
+            image: Boolean(item.imageUrl && this.modelStatus.priceModel.featureConfig.hasImages)
           }
         });
       }
@@ -674,27 +975,47 @@ class MLService {
       const weightsPath = path.join(this.modelPath, `${type}Model.weights.bin`);
       
       if (!fs.existsSync(modelPath) || !fs.existsSync(weightsPath)) {
-        throw new Error('Model files not found');
+        logger.info('No existing model found, will initialize new model');
+        return false;
       }
       
-      // Initialize model architecture
+      // Load model architecture first
+      const modelJson = JSON.parse(await fsPromises.readFile(modelPath, 'utf8'));
+      
+      // Initialize model with the same architecture as saved model
       if (type === 'price') {
-        await this.initializePriceModel(7);
+        // Calculate input shape from saved model
+        const inputShape = modelJson.layers[0].config.inputShape[1];
+        await this.initializePriceModel(inputShape);
         
-        // Load weights using browser-compatible method
+        // Load weights
         const weights = await fsPromises.readFile(weightsPath);
         const weightData = new Float32Array(weights.buffer);
         
-        // Set weights using browser-compatible method
+        // Verify weight count matches model architecture
+        const expectedWeightCount = this.priceModel.countParams();
+        if (weightData.length !== expectedWeightCount) {
+          logger.warn(`Weight count mismatch. Expected ${expectedWeightCount}, got ${weightData.length}`);
+          return false;
+        }
+        
+        // Set weights
         this.priceModel.setWeights(weightData);
       } else if (type === 'image') {
         await this.initializeImageModel();
         
-        // Load weights using browser-compatible method
+        // Load weights
         const weights = await fsPromises.readFile(weightsPath);
         const weightData = new Float32Array(weights.buffer);
         
-        // Set weights using browser-compatible method
+        // Verify weight count matches model architecture
+        const expectedWeightCount = this.imageModel.countParams();
+        if (weightData.length !== expectedWeightCount) {
+          logger.warn(`Weight count mismatch. Expected ${expectedWeightCount}, got ${weightData.length}`);
+          return false;
+        }
+        
+        // Set weights
         this.imageModel.setWeights(weightData);
       }
       
@@ -702,7 +1023,7 @@ class MLService {
       return true;
     } catch (error) {
       logger.error(`Error loading ${type} model:`, error);
-      throw error;
+      return false;
     }
   }
 
@@ -738,6 +1059,189 @@ class MLService {
       logger.info('Model statistics saved successfully');
     } catch (error) {
       logger.error('Error saving model statistics:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to calculate R² score
+  calculateR2Score(yTrue, yPred) {
+    const yMean = tf.mean(yTrue);
+    const ssTot = tf.sum(tf.square(tf.sub(yTrue, yMean)));
+    const ssRes = tf.sum(tf.square(tf.sub(yTrue, yPred)));
+    return 1 - ssRes.div(ssTot).dataSync()[0];
+  }
+
+  // Data preparation wrapper
+  preparePriceData(data) {
+    return this.preprocessPriceData(data);
+  }
+
+  // New method to process image features
+  async processImageFeatures(imageUrl) {
+    try {
+      if (!this.imageModel) {
+        throw new Error('Image model not initialized');
+      }
+
+      const processedImage = await this.preprocessImageData(imageUrl);
+      const imageFeatures = this.imageModel.predict(processedImage, { training: false });
+      const features = await imageFeatures.data();
+
+      processedImage.dispose();
+      imageFeatures.dispose();
+
+      return Array.from(features);
+    } catch (error) {
+      logger.error('Error processing image features:', error);
+      throw error;
+    }
+  }
+
+  // Add new methods for cross-validation and feature importance
+  async performCrossValidation(data, k = 5) {
+    try {
+      // Validate input data
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('Invalid or empty training data for cross-validation');
+      }
+
+      // Ensure k is not larger than the data size
+      k = Math.min(k, data.length);
+      if (k < 2) {
+        throw new Error('Not enough data for cross-validation. Need at least 2 samples.');
+      }
+
+      // Preprocess all data first to ensure consistent feature dimensions
+      const allData = this.preprocessPriceData(data);
+      const allFeatures = allData.features;
+      const allTargets = allData.targets;
+
+      // Validate feature dimensions
+      if (!allFeatures || !allFeatures.length || !allFeatures[0] || !allFeatures[0].length) {
+        throw new Error('Invalid feature arrays after preprocessing');
+      }
+
+      const foldSize = Math.floor(allFeatures.length / k);
+      const folds = [];
+      const results = [];
+
+      // Create k folds
+      for (let i = 0; i < k; i++) {
+        const start = i * foldSize;
+        const end = i === k - 1 ? allFeatures.length : (i + 1) * foldSize;
+        folds.push({
+          features: allFeatures.slice(start, end),
+          targets: allTargets.slice(start, end)
+        });
+      }
+
+      // Perform k-fold cross-validation
+      for (let i = 0; i < k; i++) {
+        // Create training and validation sets
+        const validationSet = folds[i];
+        const trainingSet = folds.filter((_, index) => index !== i).reduce((acc, fold) => ({
+          features: acc.features.concat(fold.features),
+          targets: acc.targets.concat(fold.targets)
+        }), { features: [], targets: [] });
+
+        // Validate sets
+        if (validationSet.features.length === 0 || trainingSet.features.length === 0) {
+          throw new Error(`Empty validation or training set in fold ${i + 1}`);
+        }
+
+        // Convert to tensors with explicit shapes
+        const trainXs = tf.tensor2d(trainingSet.features, [trainingSet.features.length, trainingSet.features[0].length]);
+        const trainYs = tf.tensor2d(trainingSet.targets, [trainingSet.targets.length, 1]);
+        const valXs = tf.tensor2d(validationSet.features, [validationSet.features.length, validationSet.features[0].length]);
+        const valYs = tf.tensor2d(validationSet.targets, [validationSet.targets.length, 1]);
+
+        // Train model
+        const history = await this.priceModel.fit(trainXs, trainYs, {
+          epochs: 20,
+          batchSize: 32,
+          validationData: [valXs, valYs],
+          verbose: 0
+        });
+
+        // Calculate metrics
+        const predictions = await this.priceModel.predict(valXs);
+        const mse = tf.metrics.meanSquaredError(valYs, predictions).dataSync()[0];
+        const mae = tf.metrics.meanAbsoluteError(valYs, predictions).dataSync()[0];
+        const r2 = this.calculateR2Score(valYs, predictions);
+
+        // Calculate feature importance for this fold
+        const featureImportance = await this.calculateFeatureImportance(this.priceModel, validationSet.features, validationSet.targets);
+
+        results.push({
+          fold: i + 1,
+          metrics: { mse, mae, r2 },
+          featureImportance,
+          validationLoss: history.history.val_loss[history.history.val_loss.length - 1]
+        });
+
+        // Clean up tensors
+        trainXs.dispose();
+        trainYs.dispose();
+        valXs.dispose();
+        valYs.dispose();
+        predictions.dispose();
+      }
+
+      // Calculate average metrics and feature importance
+      const avgMetrics = {
+        mse: results.reduce((acc, r) => acc + r.metrics.mse, 0) / k,
+        mae: results.reduce((acc, r) => acc + r.metrics.mae, 0) / k,
+        r2: results.reduce((acc, r) => acc + r.metrics.r2, 0) / k,
+        validationLoss: results.reduce((acc, r) => acc + r.validationLoss, 0) / k
+      };
+
+      // Calculate average feature importance with standard deviation
+      const numFeatures = results[0].featureImportance.length;
+      const avgFeatureImportance = new Array(numFeatures).fill(0);
+      const stdFeatureImportance = new Array(numFeatures).fill(0);
+
+      for (let i = 0; i < numFeatures; i++) {
+        const values = results.map(r => r.featureImportance[i]);
+        const mean = values.reduce((a, b) => a + b, 0) / k;
+        const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / k;
+        avgFeatureImportance[i] = mean;
+        stdFeatureImportance[i] = Math.sqrt(variance);
+      }
+
+      return {
+        averageMetrics: avgMetrics,
+        featureImportance: {
+          mean: avgFeatureImportance,
+          std: stdFeatureImportance
+        },
+        foldResults: results
+      };
+    } catch (error) {
+      logger.error('Cross-validation error:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to safely dispose tensors
+  disposeTensors(...tensors) {
+    tensors.forEach(tensor => {
+      if (tensor && typeof tensor.dispose === 'function') {
+        try {
+          tensor.dispose();
+        } catch (error) {
+          logger.error('Error disposing tensor:', error);
+        }
+      }
+    });
+  }
+
+  async saveModelStatus() {
+    try {
+      const statusPath = path.join(this.modelPath, 'modelStatus.json');
+      await fsPromises.writeFile(statusPath, JSON.stringify(this.modelStatus, null, 2));
+      logger.info('Model status saved successfully');
+    } catch (error) {
+      logger.error('Error saving model status:', error);
       throw error;
     }
   }

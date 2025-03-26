@@ -51,11 +51,15 @@ router.post('/train/price', async (req, res) => {
   try {
     const { data, epochs } = req.body;
     if (!data || !Array.isArray(data)) {
-      return res.status(400).json({ error: 'Training data is required' });
+      return res.status(400).json({ error: 'Training data is required and must be an array' });
+    }
+    if (data.length === 0) {
+      return res.status(400).json({ error: 'Training data array cannot be empty' });
     }
     const result = await mlService.trainPriceModel(data, epochs);
     res.json(result);
   } catch (error) {
+    console.error('Error in /train/price route:', error);
     res.status(500).json({ error: error.message });
   }
 });
