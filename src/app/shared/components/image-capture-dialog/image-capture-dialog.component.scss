@@ -1,7 +1,9 @@
 .dialog-title {
   text-align: center;
   margin-bottom: 0;
-  padding: 0 16px;
+  padding: 1rem;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
 }
 
 .compact-dialog {
@@ -19,22 +21,33 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 24px 24px;
+  gap: 1rem;
+  padding: 1rem;
   overflow-y: auto;
   
+  .camera-selection {
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 1rem;
+    
+    .compact-field {
+      width: 100%;
+      
+      ::ng-deep .mat-form-field-wrapper {
+        padding-bottom: 0;
+      }
+    }
+  }
+  
   .camera-error {
-    color: #f44336;
-    margin: 20px 0;
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
+    color: #f44336;
+    padding: 1rem;
     
     mat-icon {
       font-size: 48px;
-      height: 48px;
       width: 48px;
+      height: 48px;
     }
     
     h3 {
@@ -51,116 +64,48 @@
     }
   }
   
-  .camera-selection {
+  .webcam-container {
     width: 100%;
-    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
     
-    .compact-field {
+    .webcam-wrapper {
       width: 100%;
-      margin-bottom: 0;
+      max-width: 640px;
+      background: #000;
+      overflow: hidden;
+      border-radius: 4px;
       
-      ::ng-deep .mat-mdc-form-field-infix {
-        padding-top: 8px;
-        padding-bottom: 8px;
-      }
-      
-      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-        height: 16px;
-        padding: 0 4px;
+      ::ng-deep video {
+        width: 100%;
+        height: auto;
       }
     }
   }
   
-  .webcam-container {
+  .camera-controls, .snapshot-controls {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    
-    .webcam-wrapper {
-      width: 100%; 
-      display: flex;
-      justify-content: center;
-      
-      webcam {
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        max-width: 580px;
-        max-height: 60vh;
-        
-        // Make webcam responsive
-        ::ng-deep video {
-          width: 100% !important;
-          height: auto !important;
-          object-fit: cover;
-        }
-      }
-    }
-    
-    .camera-controls {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-top: 24px;
-      margin-bottom: 8px;
-      width: 100%;
-      
-      button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 140px;
-        
-        mat-icon {
-          margin-right: 8px;
-        }
-      }
-    }
+    gap: 1rem;
+    margin-top: 1rem;
   }
   
   .snapshot-container {
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
     
     .image-wrapper {
       width: 100%;
-      display: flex;
-      justify-content: center;
-      padding: 8px 0;
+      max-width: 640px;
+      margin-bottom: 1rem;
       
       img {
-        width: auto;
-        max-width: 100%;
-        max-height: 50vh;
-        border-radius: 8px;
-        object-fit: contain;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-    }
-    
-    .snapshot-controls {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-top: 24px;
-      margin-bottom: 8px;
-      width: 100%;
-      
-      button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 120px;
-        
-        mat-icon {
-          margin-right: 8px;
-        }
+        width: 100%;
+        height: auto;
+        border-radius: 4px;
       }
     }
   }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService, User } from '../../../../core/services/auth.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,6 +7,8 @@ import { environment } from '../../../../../environments/environment';
 import { CreateAdminDialogComponent } from '../create-admin-dialog/create-admin-dialog.component';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ActivatedRoute, Router } from '@angular/router';
+import { EnvironmentToggleService } from '../../../../core/services/environment-toggle.service';
+import { Subscription } from 'rxjs';
 
 interface MemberSelection {
   id: string;
@@ -18,9 +20,9 @@ interface MemberSelection {
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })
-export class AdminDashboardComponent implements OnInit {
+export class AdminDashboardComponent implements OnInit, OnDestroy {
   selectedTabIndex = 0;
-  selectedSection = 'users'; // Default to users section
+  selectedSection: 'users' | 'items' | 'passwords' | 'settings' = 'users';
   
   // Member selection properties
   selectedMemberId: string | null = null;
@@ -30,6 +32,8 @@ export class AdminDashboardComponent implements OnInit {
   hidePassword = true;
   newAdminPassword = '';
   resetLoading = false;
+  isProductionMode = false;
+  private envSubscription: Subscription;
 
   constructor(
     private authService: AuthService,
@@ -37,8 +41,14 @@ export class AdminDashboardComponent implements OnInit {
     private snackBar: MatSnackBar,
     private http: HttpClient,
     private route: ActivatedRoute,
-    private router: Router
-  ) {}
+    private router: Router,
+    private environmentToggle: EnvironmentToggleService
+  ) {
+    // Subscribe to environment mode changes
+    this.envSubscription = this.environmentToggle.isProductionMode().subscribe(
+      isProd => this.isProductionMode = isProd
+    );
+  }
 
   ngOnInit(): void {
     console.log('AdminDashboard - Initializing component');
@@ -64,11 +74,17 @@ export class AdminDashboardComponent implements OnInit {
     }, 100);
   }
 
+  ngOnDestroy(): void {
+    if (this.envSubscription) {
+      this.envSubscription.unsubscribe();
+    }
+  }
+
   get currentUser(): User | null {
     return this.authService.getCurrentUser();
   }
 
-  selectSection(section: string): void {
+  selectSection(section: 'users' | 'items' | 'passwords' | 'settings'): void {
     console.log('AdminDashboard - Selecting section:', section);
     this.selectedSection = section;
     
@@ -171,5 +187,15 @@ export class AdminDashboardComponent implements OnInit {
         });
       }
     });
+  }
+
+  toggleEnvironmentMode(): void {
+    const newMode = !this.isProductionMode;
+    this.environmentToggle.setProductionMode(newMode);
+    this.snackBar.open(
+      `Switched to ${newMode ? 'Production' : 'Development'} mode`,
+      'Close',
+      { duration: 3000 }
+    );
   }
 } 

@@ -4,6 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap, delay } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
+import { EnvironmentToggleService } from '../../../core/services/environment-toggle.service';
 
 export interface WebAppraisalRequest {
   imageData: string;
@@ -54,11 +55,14 @@ export class WebAppraisalService {
   private apiUrl = `${environment.apiUrl}/appraisals/web`;
   
   // For demo/development purposes, we'll simulate API responses
-  private mockEnabled = !environment.production;
+  private get mockEnabled(): boolean {
+    return !this.environmentToggle.isProductionModeSync();
+  }
   
   constructor(
     private http: HttpClient,
-    private authService: AuthService
+    private authService: AuthService,
+    private environmentToggle: EnvironmentToggleService
   ) {}
 
   /**
@@ -360,11 +364,14 @@ export class WebAppraisalService {
   }
   
   private generateGenericResults(result: WebAppraisalResult, itemType: string): void {
+    // Default to 'Item' if itemType is undefined
+    const type = itemType || 'Item';
+    
     result.aggregatedResult = {
-      suggestedName: `Vintage ${itemType} Item`,
-      suggestedCategory: itemType,
+      suggestedName: `Vintage ${type} Item`,
+      suggestedCategory: type,
       suggestedCondition: 'Good',
-      suggestedDescription: `Interesting vintage ${itemType.toLowerCase()} piece showing characteristics typical of mid-20th century design. Good condition with some signs of age and use.`,
+      suggestedDescription: `Interesting vintage ${type.toLowerCase()} piece showing characteristics typical of mid-20th century design. Good condition with some signs of age and use.`,
       estimatedValueRange: {
         min: '$200',
         max: '$400'
@@ -377,15 +384,15 @@ export class WebAppraisalService {
         name: 'Collectibles Database',
         confidence: 80,
         estimatedValue: '$300',
-        description: `Vintage ${itemType.toLowerCase()} piece from approximately 1950-1970. Shows typical design elements of the period.`,
+        description: `Vintage ${type.toLowerCase()} piece from approximately 1950-1970. Shows typical design elements of the period.`,
         itemDetails: {
-          type: itemType,
+          type: type,
           era: 'Mid-20th Century',
           condition: 'Good vintage condition'
         },
         similarItems: [
           {
-            title: `Vintage ${itemType} from the 1960s`,
+            title: `Vintage ${type} from the 1960s`,
             price: '$350',
             imageUrl: 'https://example.com/images/generic_item1.jpg',
             url: 'https://example.com/items/generic_item1'
@@ -396,7 +403,7 @@ export class WebAppraisalService {
         name: 'Vintage Appraisers Network',
         confidence: 70,
         estimatedValue: '$250-$400',
-        description: `Mid-century ${itemType.toLowerCase()} showing typical characteristics of the period. Good collectible example.`,
+        description: `Mid-century ${type.toLowerCase()} showing typical characteristics of the period. Good collectible example.`,
         itemDetails: {
           period: 'Mid-Century',
           condition: 'Good with age-appropriate wear'

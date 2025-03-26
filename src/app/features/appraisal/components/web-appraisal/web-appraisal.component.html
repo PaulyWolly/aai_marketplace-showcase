@@ -1,7 +1,7 @@
 <div class="web-appraisal-container">
   <div class="header">
-    <h1>Web Appraisal</h1>
-    <p>Get an expert appraisal for your antiques, jewelry, and vintage items using our web-based appraisal system</p>
+    <h1>New Appraisal</h1>
+    <p>Fill out the item details and add photos to get an expert appraisal</p>
   </div>
 
   <!-- Error message display -->
@@ -22,175 +22,163 @@
 
   <!-- Step indicator -->
   <div class="step-indicator">
-    <div class="step" [class.active]="processingStage === 'capture'">
+    <div class="step" [class.active]="processingStage === 'form'">
       <div class="step-number">1</div>
-      <div class="step-label">Capture Image</div>
-    </div>
-    <div class="step-connector"></div>
-    <div class="step" [class.active]="processingStage === 'details'">
-      <div class="step-number">2</div>
       <div class="step-label">Item Details</div>
     </div>
     <div class="step-connector"></div>
     <div class="step" [class.active]="processingStage === 'processing'">
-      <div class="step-number">3</div>
+      <div class="step-number">2</div>
       <div class="step-label">Processing</div>
     </div>
     <div class="step-connector"></div>
     <div class="step" [class.active]="processingStage === 'results'">
-      <div class="step-number">4</div>
+      <div class="step-number">3</div>
       <div class="step-label">Results</div>
     </div>
   </div>
 
-  <!-- STAGE 1: Image Capture -->
-  <div *ngIf="processingStage === 'capture'" class="capture-stage">
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>Capture or Upload an Image</mat-card-title>
-        <mat-card-subtitle>Take a clear photo of your item or upload an existing image</mat-card-subtitle>
-      </mat-card-header>
-      
-      <mat-card-content>
-        <!-- Camera selection -->
-        <div *ngIf="devices.length > 0" class="camera-selection">
-          <mat-form-field appearance="outline">
-            <mat-label>Select Camera</mat-label>
-            <mat-select [(ngModel)]="selectedDevice">
-              <mat-option *ngFor="let device of devices" [value]="device.deviceId">
-                {{device.label || 'Camera ' + (devices.indexOf(device) + 1)}}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-          
-          <button mat-raised-button color="primary" (click)="connectCamera()" [disabled]="!selectedDevice || isCameraActive">
-            <mat-icon>camera_alt</mat-icon>
-            Open Camera
+  <!-- Form Stage -->
+  <div *ngIf="processingStage === 'form'" class="form-stage">
+    <form [formGroup]="appraisalForm" (ngSubmit)="submitAppraisal()">
+      <mat-card>
+        <mat-card-content>
+          <!-- Basic Information -->
+          <div class="form-section">
+            <h3>Item Details</h3>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Item Name</mat-label>
+              <input matInput formControlName="name" required>
+              <mat-error *ngIf="appraisalForm.get('name')?.invalid">Name is required</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Category</mat-label>
+              <mat-select formControlName="category" required>
+                <mat-option *ngFor="let category of categories" [value]="category">
+                  {{category}}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="appraisalForm.get('category')?.invalid">Category is required</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Condition</mat-label>
+              <mat-select formControlName="condition" required>
+                <mat-option *ngFor="let condition of conditions" [value]="condition">
+                  {{condition}}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="appraisalForm.get('condition')?.invalid">Condition is required</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Estimated Value</mat-label>
+              <input matInput type="number" formControlName="estimatedValue" required>
+              <mat-error *ngIf="appraisalForm.get('estimatedValue')?.invalid">Estimated value is required</mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Dimensions -->
+          <div class="form-section">
+            <h3>Dimensions (Optional)</h3>
+            <div class="dimensions-container">
+              <mat-form-field appearance="outline">
+                <mat-label>Height</mat-label>
+                <input matInput formControlName="height">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Width</mat-label>
+                <input matInput formControlName="width">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Weight</mat-label>
+                <input matInput formControlName="weight">
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Item Description -->
+          <div class="form-section">
+            <h3>Description</h3>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Item Details</mat-label>
+              <textarea matInput formControlName="details" rows="4" required></textarea>
+              <mat-error *ngIf="appraisalForm.get('details')?.invalid">Description is required</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Market Research (Optional)</mat-label>
+              <textarea matInput formControlName="marketResearch" rows="4"
+                placeholder="Any market research or additional information about similar items"></textarea>
+            </mat-form-field>
+          </div>
+
+          <!-- Image Upload Section -->
+          <div class="form-section">
+            <h3>Item Photos</h3>
+            <p class="hint-text">Add photos of your item using your camera or upload existing images</p>
+
+            <!-- Image Actions -->
+            <div class="image-actions">
+              <button type="button" mat-raised-button color="primary" (click)="openCameraCapture()">
+                <mat-icon>camera_alt</mat-icon>
+                Take Photo
+              </button>
+              
+              <button type="button" mat-raised-button color="accent" (click)="fileInput.click()">
+                <mat-icon>upload</mat-icon>
+                Upload Image
+              </button>
+              <input #fileInput type="file" accept="image/*" style="display: none" (change)="onFileSelected($event)">
+            </div>
+
+            <!-- Image Preview -->
+            <div class="images-preview" *ngIf="images.length > 0">
+              <div *ngFor="let image of images.controls; let i = index" class="image-preview-item">
+                <img [src]="image.value" alt="Item image">
+                <div class="image-actions">
+                  <button type="button" mat-icon-button color="warn" (click)="removeImage(i)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+
+        <mat-card-actions>
+          <button type="submit" mat-raised-button color="primary" [disabled]="appraisalForm.invalid || !images.length || isSubmitting">
+            <mat-icon>send</mat-icon>
+            Submit for Internet Appraisal
           </button>
-        </div>
-
-        <!-- Webcam display -->
-        <div *ngIf="showWebcam" class="webcam-container">
-          <webcam
-            [height]="480"
-            [width]="640"
-            [trigger]="triggerObservable"
-            (imageCapture)="handleImage($event)"
-            (initError)="handleInitError($event)"
-            [videoOptions]="{
-              deviceId: selectedDevice ? { exact: selectedDevice } : undefined,
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            }"
-          ></webcam>
-          
-          <div class="camera-controls">
-            <button mat-raised-button color="primary" (click)="triggerSnapshot()">
-              <mat-icon>photo_camera</mat-icon> Capture
-            </button>
-            <button mat-raised-button color="warn" (click)="disconnectCamera()">
-              <mat-icon>close</mat-icon> Close Camera
-            </button>
-          </div>
-        </div>
-
-        <!-- File upload option -->
-        <div class="upload-container">
-          <div class="upload-prompt">
-            <p>Or upload an image from your device:</p>
-            <button mat-raised-button color="accent" (click)="fileInput.click()">
-              <mat-icon>upload</mat-icon>
-              Upload Image
-            </button>
-            <input hidden type="file" #fileInput accept="image/*" (change)="onFileSelected($event)">
-          </div>
-        </div>
-      </mat-card-content>
-    </mat-card>
+          <button type="button" mat-raised-button color="warn" (click)="onCancel()">
+            <mat-icon>close</mat-icon>
+            Cancel
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </form>
   </div>
 
-  <!-- STAGE 2: Item Details -->
-  <div *ngIf="processingStage === 'details'" class="details-stage">
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>Item Details</mat-card-title>
-        <mat-card-subtitle>Provide information about your item to improve appraisal accuracy</mat-card-subtitle>
-      </mat-card-header>
-      
-      <mat-card-content>
-        <div class="image-preview">
-          <img [src]="imageData" alt="Item image">
-        </div>
-        
-        <form [formGroup]="appraisalForm" (ngSubmit)="submitAppraisal()">
-          <mat-form-field appearance="outline">
-            <mat-label>Item Type</mat-label>
-            <mat-select formControlName="itemType" required>
-              <mat-option *ngFor="let type of itemTypes" [value]="type">
-                {{type}}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="appraisalForm.get('itemType')?.hasError('required')">
-              Item type is required
-            </mat-error>
-          </mat-form-field>
-          
-          <mat-form-field appearance="outline">
-            <mat-label>Additional Information (optional)</mat-label>
-            <textarea matInput formControlName="additionalInfo" rows="4" 
-                      placeholder="Provide any additional details about the item that might help with the appraisal (e.g., age, origin, history, markings, etc.)"></textarea>
-          </mat-form-field>
-          
-          <div class="form-actions">
-            <button mat-button type="button" (click)="startOver()">
-              <mat-icon>arrow_back</mat-icon>
-              Back
-            </button>
-            <button mat-raised-button color="primary" type="submit" [disabled]="appraisalForm.invalid || isSubmitting">
-              <mat-spinner diameter="20" *ngIf="isSubmitting"></mat-spinner>
-              <span *ngIf="!isSubmitting">Submit for Appraisal</span>
-            </button>
-          </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <!-- STAGE 3: Processing -->
+  <!-- Processing Stage -->
   <div *ngIf="processingStage === 'processing'" class="processing-stage">
     <mat-card>
       <mat-card-header>
         <mat-card-title>Processing Your Appraisal</mat-card-title>
-        <mat-card-subtitle>Please wait while we analyze your item and gather expert opinions</mat-card-subtitle>
+        <mat-card-subtitle>Please wait while we analyze your item</mat-card-subtitle>
       </mat-card-header>
-      
       <mat-card-content>
-        <div class="processing-content">
-          <div class="image-preview">
-            <img [src]="imageData" alt="Item image">
-          </div>
-          
-          <div class="processing-info">
-            <h3>What's happening now:</h3>
-            <ul>
-              <li>Analyzing image characteristics</li>
-              <li>Identifying item type and features</li>
-              <li>Consulting with appraisal experts</li>
-              <li>Researching similar items and market values</li>
-              <li>Compiling comprehensive appraisal report</li>
-            </ul>
-          </div>
-          
-          <div class="progress-container">
-            <mat-progress-bar mode="determinate" [value]="processingProgress"></mat-progress-bar>
-            <p class="progress-text">{{processingProgress.toFixed(0)}}% complete</p>
-          </div>
-        </div>
+        <mat-progress-bar mode="determinate" [value]="processingProgress"></mat-progress-bar>
+        <p class="progress-text">{{processingProgress}}% complete</p>
       </mat-card-content>
     </mat-card>
   </div>
 
-  <!-- STAGE 4: Results -->
+  <!-- Results Stage -->
   <div *ngIf="processingStage === 'results' && currentAppraisal" class="results-stage">
     <mat-card>
       <mat-card-header>

@@ -1,13 +1,15 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { WebcamImage, WebcamInitError, WebcamUtil } from 'ngx-webcam';
 import { Subject, Observable, interval, Subscription } from 'rxjs';
 import { takeWhile } from 'rxjs/operators';
 import { WebAppraisalService, WebAppraisalRequest, WebAppraisalResult } from '../../services/web-appraisal.service';
 import { AppraisalService } from '../../services/appraisal.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
+import { ImageCaptureDialogComponent } from '../../../../shared/components/image-capture-dialog/image-capture-dialog.component';
 
 @Component({
   selector: 'app-web-appraisal',
@@ -15,6 +17,8 @@ import { CategoriesService } from '../../../../core/services/categories.service'
   styleUrls: ['./web-appraisal.component.scss']
 })
 export class WebAppraisalComponent implements OnInit, OnDestroy {
+  @ViewChild('fileInput') fileInput!: ElementRef;
+  
   // Webcam properties
   private trigger: Subject<void> = new Subject<void>();
   public webcamImage: WebcamImage | null = null;
@@ -26,46 +30,49 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
   
   // Form properties
   appraisalForm: FormGroup;
-  itemTypes = [
-    'Antique',
-    'Jewelry',
-    'Vintage Clothing',
-    'Collectible',
-    'Artwork',
-    'Furniture',
-    'Watch/Timepiece',
-    'Coin/Currency',
-    'Other'
-  ];
+  categories: string[];
+  conditions: string[];
   
   // Appraisal process properties
   imageData: string | undefined;
   isSubmitting = false;
   currentAppraisal: WebAppraisalResult | null = null;
   appraisalError: string | null = null;
-  processingStage: 'capture' | 'details' | 'processing' | 'results' = 'capture';
+  processingStage: 'form' | 'processing' | 'results' = 'form';
   pollingSubscription: Subscription | null = null;
   processingProgress = 0;
   
   constructor(
     private router: Router,
     private fb: FormBuilder,
+    private dialog: MatDialog,
     private webAppraisalService: WebAppraisalService,
     private appraisalService: AppraisalService,
     private categoriesService: CategoriesService,
     private snackBar: MatSnackBar
   ) {
+    this.categories = this.categoriesService.categories;
+    this.conditions = this.categoriesService.conditions;
+    
     this.appraisalForm = this.fb.group({
-      itemType: ['', Validators.required],
-      additionalInfo: ['']
+      name: ['', [Validators.required]],
+      category: ['', [Validators.required]],
+      condition: ['', [Validators.required]],
+      estimatedValue: ['', [Validators.required]],
+      height: [''],
+      width: [''],
+      weight: [''],
+      details: ['', [Validators.required]],
+      marketResearch: [''],
+      images: this.fb.array([])
     });
   }
 
-  async ngOnInit() {
-    await this.scanForDevices();
+  ngOnInit(): void {
+    // Any initialization code
   }
-  
-  ngOnDestroy() {
+
+  ngOnDestroy(): void {
     this.disconnectCamera();
     if (this.pollingSubscription) {
       this.pollingSubscription.unsubscribe();
@@ -184,7 +191,13 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
     this.webcamImage = webcamImage;
     this.imageData = webcamImage.imageAsDataUrl;
     this.disconnectCamera();
-    this.processingStage = 'details';
+    
+    // Add the image to the form
+    const images = this.appraisalForm.get('images') as FormArray;
+    images.push(this.fb.control(this.imageData));
+    this.appraisalForm.patchValue({
+      imageUrl: this.imageData
+    });
   }
 
   public get triggerObservable(): Observable<void> {
@@ -210,63 +223,157 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
     this.isCameraActive = false;
   }
 
-  // File upload handling
-  onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      
-      // Check if the file is an image
-      if (!file.type.startsWith('image/')) {
-        this.snackBar.open('Please select an image file', 'Close', { duration: 3000 });
-        return;
-      }
-      
-      // Convert the file to a data URL
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.imageData = reader.result as string;
-        this.processingStage = 'details';
-      };
-      reader.readAsDataURL(file);
-      
-      // Reset the input so the same file can be selected again
-      input.value = '';
-    }
+  // Getter for the images FormArray
+  get images(): FormArray {
+    return this.appraisalForm.get('images') as FormArray;
   }
 
-  // Form submission and appraisal process
-  submitAppraisal(): void {
-    if (!this.imageData) {
-      this.snackBar.open('Please capture or upload an image first', 'Close', { duration: 3000 });
+  // Add an image to the FormArray
+  addImage(imageUrl: string): void {
+    this.images.push(this.fb.control(imageUrl));
+  }
+
+  // Remove an image from the FormArray
+  removeImage(index: number): void {
+    this.images.removeAt(index);
+  }
+
+  // Handle file selection
+  onFileSelected(event: any): void {
+    if (!event.target.files || !event.target.files.length) {
+      return;
+    }
+    
+    const file = event.target.files[0];
+    if (!file.type.startsWith('image/')) {
+      this.snackBar.open('Please select an image file', 'Close', { duration: 3000 });
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      this.addImage(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Open camera capture dialog
+  openCameraCapture(): void {
+    // Check if the device has camera capabilities
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.snackBar.open('Camera access not supported by your browser. Try using the upload option instead.', 'Close', { 
+        duration: 5000 
+      });
       return;
     }
 
+    // Try to access the camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(() => {
+        // Get available cameras first to populate selection in dialog
+        navigator.mediaDevices.enumerateDevices()
+          .then(devices => {
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            const hasMultipleWebcams = videoDevices.length > 1;
+            
+            console.log(`Found ${videoDevices.length} video input devices`);
+            
+            // Open the dialog after permissions are granted
+            const dialogRef = this.dialog.open(ImageCaptureDialogComponent, {
+              width: '95%',
+              maxWidth: '650px',
+              height: 'auto',
+              maxHeight: '90vh',
+              disableClose: true,
+              panelClass: ['camera-dialog', 'mat-dialog-no-scroll'],
+              autoFocus: false,
+              data: {
+                multipleWebcams: hasMultipleWebcams,
+                availableDevices: videoDevices
+              }
+            });
+
+            dialogRef.afterClosed().subscribe(result => {
+              if (!result) {
+                console.log('Dialog was closed without any result');
+                return;
+              }
+              
+              if (result.error) {
+                console.error('Error from camera dialog:', result.error);
+                this.snackBar.open(`Camera error: ${result.error}`, 'Close', { duration: 3000 });
+                return;
+              }
+              
+              if (result.imageData) {
+                console.log('Received image data from camera dialog');
+                
+                // Add the image to the form array
+                const images = this.appraisalForm.get('images') as FormArray;
+                images.push(this.fb.control(result.imageData));
+                
+                // Show success message
+                this.snackBar.open('Photo captured successfully', 'Close', { duration: 3000 });
+              }
+            });
+          })
+          .catch(err => {
+            console.error('Error enumerating devices:', err);
+            this.snackBar.open('Could not access camera details. Please check camera permissions.', 'Close', { 
+              duration: 5000 
+            });
+          });
+      })
+      .catch(err => {
+        console.error('Camera permission error:', err);
+        let errorMessage = 'Camera access denied. Please enable camera permissions in your browser settings.';
+        
+        // Provide more specific error messages based on the error
+        if (err.name === 'NotFoundError') {
+          errorMessage = 'No camera found on your device.';
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = 'Camera is in use by another application.';
+        } else if (err.name === 'OverconstrainedError') {
+          errorMessage = 'Your camera does not support the required features.';
+        } else if (err.name === 'AbortError') {
+          errorMessage = 'Camera access was aborted.';
+        }
+        
+        this.snackBar.open(errorMessage, 'Close', { 
+          duration: 5000 
+        });
+      });
+  }
+
+  // Submit the appraisal
+  submitAppraisal(): void {
     if (this.appraisalForm.invalid) {
       this.snackBar.open('Please fill out all required fields', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (this.images.length === 0) {
+      this.snackBar.open('Please add at least one image', 'Close', { duration: 3000 });
       return;
     }
 
     this.isSubmitting = true;
     this.appraisalError = null;
     
+    const formData = this.appraisalForm.value;
     const request: WebAppraisalRequest = {
-      imageData: this.imageData,
-      itemType: this.appraisalForm.get('itemType')?.value,
-      additionalInfo: this.appraisalForm.get('additionalInfo')?.value
+      imageData: this.images.at(0)?.value,
+      ...formData
     };
 
     this.webAppraisalService.submitAppraisalRequest(request).subscribe({
       next: (result) => {
-        console.log('Appraisal request submitted:', result);
         this.currentAppraisal = result;
         this.processingStage = 'processing';
         this.startPolling(result.id);
         this.isSubmitting = false;
       },
       error: (error) => {
-        console.error('Error submitting appraisal request:', error);
         this.appraisalError = error.message || 'Failed to submit appraisal request';
         this.isSubmitting = false;
       }
@@ -309,14 +416,14 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
                 this.processingStage = 'results';
                 this.snackBar.open('Appraisal completed successfully', 'Close', { duration: 3000 });
               } else if (result.status === 'failed') {
-                this.processingStage = 'capture';
+                this.processingStage = 'form';
                 this.appraisalError = result.error || 'Appraisal processing failed';
               }
             },
             error: (error) => {
               console.error('Error checking appraisal status:', error);
               this.appraisalError = 'Failed to check appraisal status: ' + (error.message || 'Unknown error');
-              this.processingStage = 'capture';
+              this.processingStage = 'form';
               
               // Stop polling on error
               if (this.pollingSubscription) {
@@ -357,7 +464,7 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
   }
 
   startOver(): void {
-    this.processingStage = 'capture';
+    this.processingStage = 'form';
     this.imageData = undefined;
     this.webcamImage = null;
     this.currentAppraisal = null;
@@ -391,6 +498,30 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
         key: formattedKey,
         value: value
       };
+    });
+  }
+
+  // Handle canceling the appraisal process
+  onCancel(): void {
+    // Show a confirmation snackbar
+    const snackBarRef = this.snackBar.open('Are you sure you want to cancel this appraisal?', 'Yes', {
+      duration: 5000,
+    });
+
+    snackBarRef.onAction().subscribe(() => {
+      // Clean up any ongoing processes
+      if (this.pollingSubscription) {
+        this.pollingSubscription.unsubscribe();
+      }
+      
+      // Reset form and state
+      this.appraisalForm.reset();
+      this.images.clear();
+      this.processingStage = 'form';
+      this.processingProgress = 0;
+      
+      // Navigate back to the previous page
+      this.router.navigate(['/profile/items']);
     });
   }
 } 
