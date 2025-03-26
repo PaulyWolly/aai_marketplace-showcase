@@ -1,86 +1,113 @@
-# AI-Driven Platform
+# AI Art Appraisal System
 
-A modern, AI-driven platform that leverages machine learning and data integration to provide intelligent insights and automation.
+An intelligent system for appraising art pieces using machine learning and computer vision.
 
-## Project Structure
+## Project Phases
 
-```
-.
-├── backend/                 # Python FastAPI backend
-│   ├── app/                # Main application code
-│   │   ├── api/           # API endpoints
-│   │   ├── core/          # Core functionality
-│   │   ├── models/        # ML models
-│   │   └── services/      # Business logic
-│   ├── tests/             # Backend tests
-│   └── requirements.txt    # Python dependencies
-├── frontend/               # Angular frontend
-│   ├── src/               # Source code
-│   │   ├── app/          # Application components
-│   │   ├── core/         # Core services
-│   │   └── shared/       # Shared components
-│   └── package.json       # Frontend dependencies
-└── data/                  # Data processing pipeline
-    ├── collectors/        # Data collection scripts
-    ├── processors/        # Data processing scripts
-    └── storage/          # Data storage
-```
+### Phase 1: Basic Price Prediction Model ✅
+- [x] Set up basic project structure
+- [x] Implement data preprocessing
+- [x] Create initial price prediction model
+- [x] Add basic error handling
+- [x] Implement model saving/loading
+- [x] Add logging system
+
+### Phase 2: Enhanced Model Features ✅
+- [x] Add cross-validation for better evaluation
+- [x] Implement feature importance analysis
+- [x] Add support for color features
+- [x] Add support for image features
+- [x] Implement confidence scoring
+- [x] Add non-negative prediction constraints
+
+### Phase 3: Image Analysis
+- [ ] Implement image preprocessing
+- [ ] Create CNN model for image feature extraction
+- [ ] Add image classification capabilities
+- [ ] Integrate image features with price prediction
+- [ ] Add image similarity search
+
+### Phase 4: Real-time Updates
+- [ ] Implement real-time price updates
+- [ ] Add market trend analysis
+- [ ] Create feedback loop for model improvement
+- [ ] Add automated retraining system
 
 ## Features
 
-- AI/ML-powered insights and predictions
-- Data integration from multiple sources
-- Real-time processing and analysis
-- Modern, responsive UI
-- Scalable architecture
+### Completed
+- Price prediction based on multiple features
+- Cross-validation for model evaluation
+- Feature importance analysis
+- Support for color and image features
+- Confidence scoring for predictions
+- Non-negative price predictions
+- Comprehensive error handling
+- Detailed logging system
 
-## Getting Started
+### In Progress
+- Image analysis and classification
+- Real-time price updates
 
-### Backend Setup
+## Installation
 
-1. Create a virtual environment:
+1. Clone the repository:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+git clone https://github.com/yourusername/ai-art-appraisal.git
+cd ai-art-appraisal
 ```
 
 2. Install dependencies:
 ```bash
-pip install -r requirements.txt
-```
-
-3. Run the development server:
-```bash
-uvicorn app.main:app --reload
-```
-
-### Frontend Setup
-
-1. Install dependencies:
-```bash
-cd frontend
 npm install
 ```
 
-2. Run the development server:
+3. Start the development server:
 ```bash
-ng serve
+npm run dev
 ```
 
-## Development
+## Usage
 
-- Backend API documentation available at `/docs` when running the server
-- Frontend follows Angular best practices and component architecture
-- Data pipeline supports multiple data sources and formats
+### Price Prediction
+```javascript
+const prediction = await mlService.predictPrice({
+  height: 30,
+  width: 20,
+  weight: 2.5,
+  category: "Art",
+  condition: "Good",
+  age: 50,
+  rarity: "Rare",
+  colors: ["Blue", "Green"],
+  imageUrl: "https://example.com/art.jpg"
+});
+```
+
+### Image Classification
+```javascript
+const classification = await mlService.classifyImage(imageData);
+```
+
+## API Endpoints
+
+### Price Prediction
+- `POST /api/ml/predict/price` - Get price prediction for an item
+- `POST /api/ml/train/price` - Train the price prediction model
+- `GET /api/ml/status` - Get model status and performance metrics
+
+### Image Analysis
+- `POST /api/ml/classify/image` - Classify an image
+- `POST /api/ml/train/image` - Train the image classification model
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the LICENSE file for details.
