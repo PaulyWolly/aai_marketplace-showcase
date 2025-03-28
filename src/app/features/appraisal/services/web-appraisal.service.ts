@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import { catchError, map, tap, delay } from 'rxjs/operators';
+import { catchError, map, tap, delay, switchMap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { EnvironmentToggleService } from '../../../core/services/environment-toggle.service';
+import { ImagePreprocessingService } from './image-preprocessing.service';
 
 export interface WebAppraisalRequest {
   imageData: string;
@@ -62,7 +63,8 @@ export class WebAppraisalService {
   constructor(
     private http: HttpClient,
     private authService: AuthService,
-    private environmentToggle: EnvironmentToggleService
+    private environmentToggle: EnvironmentToggleService,
+    private imagePreprocessingService: ImagePreprocessingService
   ) {}
 
   /**
@@ -75,7 +77,18 @@ export class WebAppraisalService {
       return this.mockSubmitAppraisal(request);
     }
     
-    return this.http.post<WebAppraisalResult>(`${this.apiUrl}/submit`, request);
+    // First preprocess the image
+    return this.imagePreprocessingService.preprocessImage(request.imageData)
+      .pipe(
+        switchMap(processedImage => {
+          // Then submit the appraisal with the processed image
+          const processedRequest = {
+            ...request,
+            imageData: processedImage
+          };
+          return this.http.post<WebAppraisalResult>(`${this.apiUrl}/submit`, processedRequest);
+        })
+      );
   }
   
   /**

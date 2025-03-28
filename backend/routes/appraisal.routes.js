@@ -268,20 +268,12 @@ router.post('/save', upload.single('file'), async (req, res) => {
 // Get all appraisals for the current user
 router.get('/user', auth, async (req, res) => {
   try {
-    const userId = req.user.id;
-    console.log(`Fetching appraisals for user: ${userId}`);
-    
-    const appraisals = await AppraisalSchema.find({ userId });
-    console.log(`Found ${appraisals.length} appraisals for user ${userId}`);
-    
-    if (appraisals.length === 0) {
-      console.log(`No appraisals found for user ${userId}. User may not have created any items yet.`);
-    }
-    
+    const appraisals = await AppraisalSchema.find({ userId: req.user.id })
+      .sort({ createdAt: -1 });
     res.json(appraisals);
   } catch (error) {
-    console.error('Error fetching appraisals:', error);
-    res.status(500).json({ message: 'Error fetching appraisals', error: error.message });
+    console.error('Error fetching user appraisals:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -316,20 +308,13 @@ router.get('/all', auth, isAdmin, async (req, res) => {
   }
 });
 
-// Get all published appraisals for the showcase
-router.get('/published', auth, async (req, res) => {
+// Get published appraisals
+router.get('/published', async (req, res) => {
   try {
-    console.log('Fetching published appraisals');
-    const appraisals = await AppraisalSchema.find({ isPublished: true });
-    console.log(`Found ${appraisals.length} published appraisals`);
-    
-    if (appraisals.length === 0) {
-      console.log('No published appraisals found. Database may be empty or all items are unpublished.');
-    }
-    
+    const appraisals = await AppraisalSchema.find({ isPublished: true })
+      .sort({ timestamp: -1 });
     res.json(appraisals);
   } catch (error) {
-    console.error('Error fetching published appraisals:', error);
     res.status(500).json({ message: 'Error fetching published appraisals', error: error.message });
   }
 });
@@ -739,6 +724,31 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
   } catch (error) {
     console.error('Error updating appraisal:', error);
     res.status(500).json({ message: 'Error updating appraisal', error: error.message });
+  }
+});
+
+// Reassign an appraisal to a different user (admin only)
+router.patch('/:id/reassign', auth, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'New user ID is required' });
+    }
+
+    const appraisal = await AppraisalSchema.findById(id);
+    if (!appraisal) {
+      return res.status(404).json({ message: 'Appraisal not found' });
+    }
+
+    appraisal.userId = userId;
+    await appraisal.save();
+
+    res.json({ message: 'Appraisal reassigned successfully', appraisal });
+  } catch (error) {
+    console.error('Error reassigning appraisal:', error);
+    res.status(500).json({ message: 'Error reassigning appraisal', error: error.message });
   }
 });
 

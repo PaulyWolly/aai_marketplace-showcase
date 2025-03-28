@@ -162,6 +162,9 @@
               <button mat-raised-button color="primary" (click)="editAsAdmin(item._id!)" [disabled]="!item._id">
                 <mat-icon>edit</mat-icon> Edit Item
               </button>
+              <button mat-raised-button color="accent" (click)="reassignItem(item)" [disabled]="!item._id">
+                <mat-icon>person_add</mat-icon> Reassign
+              </button>
               <button mat-raised-button color="warn" (click)="deleteItem()" class="delete-button">
                 <mat-icon>delete</mat-icon> Delete Item
               </button>

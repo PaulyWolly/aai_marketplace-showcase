@@ -536,28 +536,49 @@ export class MemberItemFormComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Debug log the current state of images
+    console.log('Image validation state:', {
+      mainImageUrl: this.mainImageUrl,
+      imagesFormArray: this.imagesFormArray.value,
+      formImageUrl: this.itemForm.get('imageUrl')?.value,
+      formImages: this.itemForm.get('images')?.value
+    });
+
+    // Check if we have at least one image (either in mainImageUrl or imagesFormArray)
+    const hasMainImage = !!this.mainImageUrl || !!this.itemForm.get('imageUrl')?.value;
+    const hasAdditionalImages = this.imagesFormArray && this.imagesFormArray.length > 0;
+    
+    if (!hasMainImage && !hasAdditionalImages) {
+      console.error('No images found for submission');
+      this.snackBar.open('Please upload or capture at least one image', 'Close', { duration: this.snackBarDuration });
+      return;
+    }
+
     this.loading = true;
     
     // Create a copy of the form data
     let data = {...this.itemForm.value};
     
-    // Debug: Check type of imageUrl before submission
-    console.log('DEBUG - imageUrl before submission:', data.imageUrl);
-    console.log('DEBUG - imageUrl type:', typeof data.imageUrl);
-    if (Array.isArray(data.imageUrl)) {
-      console.warn('WARNING: imageUrl is already an array at submission time');
+    // Ensure we have an imageUrl set - if not set but we have images, use the first one
+    if (!data.imageUrl && hasAdditionalImages) {
+      const firstImage = this.imagesFormArray.at(0).value;
+      data.imageUrl = typeof firstImage === 'string' ? firstImage : firstImage.url;
+      console.log('Setting main image from first additional image:', data.imageUrl);
     }
 
-    // Debug: Check images array
-    console.log('DEBUG - images array:', data.images);
-    
-    // Make sure we have the ID for edit mode
-    if (this.isEditMode && this.itemId) {
-      // For backward compatibility, support both _id and id
-      data._id = this.itemId;
-      data.id = this.itemId;
+    // If we have a mainImageUrl but it's not in the form data, add it
+    if (this.mainImageUrl && !data.imageUrl) {
+      data.imageUrl = this.mainImageUrl;
+      console.log('Setting main image from mainImageUrl:', this.mainImageUrl);
     }
     
+    // Debug: Log final image data
+    console.log('Final form submission data:', {
+      imageUrl: data.imageUrl,
+      hasImages: data.images && data.images.length > 0,
+      totalImages: (data.images || []).length
+    });
+
     // Always try the multipart submission first for images
     this.tryMultipartSubmission(data).catch(err => {
       console.error('Multipart submission failed, trying minimal submission', err);

@@ -4,9 +4,18 @@ const { auth, isAdmin } = require('../middleware/auth');
 const User = require('../models/User');
 
 // Get all users (admin only)
-router.get('/', auth, isAdmin, async (req, res) => {
+router.get('/', auth, async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    // Get all users
+    const users = await User.find()
+      .select('-password')
+      .sort({ createdAt: -1 });
+
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);

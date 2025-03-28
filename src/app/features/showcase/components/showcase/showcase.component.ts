@@ -4,6 +4,8 @@ import { ShowcaseService } from '../../services/showcase.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { Appraisal } from '../../../appraisal/services/appraisal.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { MatDialog } from '@angular/material/dialog';
+import { ReassignItemDialogComponent } from '../reassign-item-dialog/reassign-item-dialog.component';
 
 @Component({
   selector: 'app-showcase',
@@ -29,7 +31,8 @@ export class ShowcaseComponent implements OnInit {
     private categoriesService: CategoriesService,
     private router: Router,
     private route: ActivatedRoute,
-    private authService: AuthService
+    private authService: AuthService,
+    private dialog: MatDialog
   ) {
     this.categories = this.categoriesService.categories;
   }
@@ -206,5 +209,22 @@ export class ShowcaseComponent implements OnInit {
     
     // Then reload
     this.loadItems();
+  }
+
+  reassignItem(event: Event, item: any): void {
+    // Prevent the click from bubbling up to the card and triggering viewItemDetails
+    event.stopPropagation();
+    
+    const dialogRef = this.dialog.open(ReassignItemDialogComponent, {
+      width: '500px',
+      data: { item }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === true) {
+        // Refresh the items list after successful reassignment
+        this.loadItems();
+      }
+    });
   }
 } 

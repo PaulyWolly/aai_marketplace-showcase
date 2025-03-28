@@ -8,6 +8,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmDialogComponent } from '../../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { finalize } from 'rxjs/operators';
+import { ReassignItemDialogComponent } from '../reassign-item-dialog/reassign-item-dialog.component';
 
 // Import marked directly - this approach works better with different versions
 declare const marked: any;
@@ -141,30 +142,34 @@ export class ItemDetailComponent implements OnInit {
     }
   }
   
-  loadMemberInfo(userId?: string): void {
+  loadMemberInfo(userId?: string): Promise<void> {
     if (!userId) {
-      if (!this.item || !this.item.userId) return;
+      if (!this.item || !this.item.userId) return Promise.resolve();
       userId = this.item.userId;
     }
     
     this.memberLoading = true;
-    this.authService.getBasicUserInfo(userId).subscribe({
-      next: (user) => {
-        if (this.item && user) {
-          this.item.owner = {
-            name: `${user.firstName} ${user.lastName}`,
-            email: user.email
-          };
-          console.log('Member info loaded:', this.item.owner);
-        } else {
-          console.warn('Failed to load member info - user data missing');
+    return new Promise((resolve) => {
+      this.authService.getBasicUserInfo(userId!).subscribe({
+        next: (user) => {
+          if (this.item && user) {
+            this.item.owner = {
+              name: `${user.firstName} ${user.lastName}`,
+              email: user.email
+            };
+            console.log('Member info loaded:', this.item.owner);
+          } else {
+            console.warn('Failed to load member info - user data missing');
+          }
+          this.memberLoading = false;
+          resolve();
+        },
+        error: (err) => {
+          console.error('Error loading member info:', err);
+          this.memberLoading = false;
+          resolve(); // Resolve even on error to continue the flow
         }
-        this.memberLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading member info:', err);
-        this.memberLoading = false;
-      }
+      });
     });
   }
 
@@ -413,6 +418,30 @@ export class ItemDetailComponent implements OnInit {
       return;
     }
     this.router.navigate(['/admin/items/edit', id]);
+  }
+  
+  reassignItem(item: any): void {
+    if (!item || !item._id) {
+      this.snackBar.open('Cannot reassign: Item ID is missing', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(ReassignItemDialogComponent, {
+      width: '500px',
+      data: { item }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result === true) {
+        // Show a loading message
+        this.snackBar.open('Reassignment successful, refreshing page...', '', { duration: 2000 });
+        
+        // Refresh the entire page after a short delay to allow the snackbar to be seen
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    });
   }
   
   handleImageError(event: Event): void {

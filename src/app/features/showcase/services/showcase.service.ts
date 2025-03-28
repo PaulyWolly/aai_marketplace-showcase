@@ -223,4 +223,8 @@ export class ShowcaseService {
       timestamp: Date.now()
     });
   }
+
+  reassignItem(itemId: string, newUserId: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${itemId}/reassign`, { userId: newUserId });
+  }
 } 

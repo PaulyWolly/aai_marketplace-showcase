@@ -15,30 +15,24 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialogModule } from '@angular/material/dialog';
 
 // Components
 import { ShowcaseComponent } from './components/showcase/showcase.component';
 import { ItemDetailComponent } from './components/item-detail/item-detail.component';
+import { ReassignItemDialogComponent } from './components/reassign-item-dialog/reassign-item-dialog.component';
 
 const routes: Routes = [
-  {
-    path: '',
-    component: ShowcaseComponent
-  },
-  {
-    path: 'user/:userId',
-    component: ShowcaseComponent
-  },
-  {
-    path: 'item/:id',
-    component: ItemDetailComponent
-  }
+  { path: '', component: ShowcaseComponent },
+  { path: 'user/:userId', component: ShowcaseComponent },
+  { path: 'item/:id', component: ItemDetailComponent }
 ];
 
 @NgModule({
   declarations: [
     ShowcaseComponent,
-    ItemDetailComponent
+    ItemDetailComponent,
+    ReassignItemDialogComponent
   ],
   imports: [
     CommonModule,
@@ -54,7 +48,8 @@ const routes: Routes = [
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatMenuModule,
-    MatDatepickerModule
+    MatDatepickerModule,
+    MatDialogModule
   ]
 })
 export class ShowcaseModule { } 

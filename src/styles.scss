@@ -236,28 +236,128 @@ app-appraisal-capture {
 }
 
 /* Camera dialog styles */
-.camera-dialog .mat-mdc-dialog-container {
-  padding: 0;
-  overflow: hidden;
+.camera-dialog {
+  .mat-mdc-dialog-container {
+    padding: 12px;
+    height: auto !important;
+    min-height: 600px !important;
+  }
+
+  .mat-mdc-dialog-surface {
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    height: auto !important;
+    min-height: 600px !important;
+  }
+  
+  .mat-mdc-dialog-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+  
+  .mat-mdc-dialog-title {
+    text-align: center;
+    margin: 0;
+    padding: 16px 16px 0;
+  }
+  
+  .mat-mdc-dialog-actions {
+    justify-content: center;
+    padding: 16px !important;
+    margin-top: auto !important;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    z-index: 2;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+  }
+  
+  webcam {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    
+    video {
+      display: block;
+      width: 100% !important;
+      height: auto !important;
+      object-fit: cover;
+    }
+  }
+
+  .camera-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
+    height: 100%;
+  }
+
+  .webcam-wrapper {
+    flex: 1;
+    margin-bottom: 16px;
+  }
+
+  .camera-controls, .snapshot-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    padding: 16px;
+    background: white;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
 }
 
-.camera-dialog .mat-mdc-dialog-content {
-  max-height: none;
-  padding: 0 12px;
-  margin: 0;
-  overflow: hidden;
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
 }
 
-.camera-dialog .mat-mdc-dialog-title {
-  padding: 12px 12px 0 12px;
-  margin: 0;
-  font-size: 18px;
+.webcam-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+  
+  .webcam-wrapper {
+    margin-bottom: 16px;
+  }
+  
+  .camera-controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
+  }
 }
 
-.camera-dialog .mat-mdc-dialog-actions {
-  padding: 0 12px 12px;
-  margin: 0;
-  min-height: auto;
+.snapshot-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  
+  .image-wrapper {
+    margin-bottom: 16px;
+    
+    img {
+      max-width: 100%;
+      max-height: 400px;
+    }
+  }
+  
+  .snapshot-controls {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
+  }
 }
 
 /* Markdown Styles */
@@ -373,34 +473,6 @@ app-appraisal-capture {
   width: 100%;
 }
 
-.webcam-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 10px;
-  
-  .camera-controls {
-    margin-top: 10px;
-  }
-}
-
-.snapshot-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  
-  img {
-    max-width: 100%;
-    max-height: 400px;
-    margin-bottom: 10px;
-  }
-  
-  .snapshot-controls {
-    display: flex;
-    gap: 10px;
-  }
-}
-
 // Custom tooltip styling
 .mat-tooltip {
   font-size: 14px !important;
@@ -501,51 +573,5 @@ app-appraisal-capture {
     max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-}
-
-/* Make photo capture dialog take appropriate space */
-.camera-dialog {
-  .mat-mdc-dialog-container {
-    padding: 12px;
-  }
-
-  .mat-mdc-dialog-surface {
-    display: flex;
-    flex-direction: column;
-    background-color: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  
-  .mat-mdc-dialog-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .mat-mdc-dialog-title {
-    text-align: center;
-    margin: 0;
-    padding: 16px 16px 0;
-  }
-  
-  .mat-mdc-dialog-actions {
-    justify-content: center;
-    padding: 0 16px 16px;
-    min-height: 52px;
-  }
-  
-  webcam {
-    display: block;
-    margin: 0 auto;
-    max-width: 100%;
-    
-    video {
-      display: block;
-      width: 100% !important;
-      height: auto !important;
-      object-fit: cover;
-    }
   }
 }

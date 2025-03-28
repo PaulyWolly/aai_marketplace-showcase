@@ -90,6 +90,11 @@
         <button mat-button color="primary">
           <mat-icon>visibility</mat-icon> View Details
         </button>
+        <button *ngIf="isAdmin && !item.userId" 
+                mat-button color="accent"
+                (click)="reassignItem($event, item)">
+          <mat-icon>person_add</mat-icon> Reassign
+        </button>
       </mat-card-actions>
     </mat-card>
   </div>

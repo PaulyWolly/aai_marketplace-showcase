@@ -153,7 +153,7 @@
         <mat-card-actions>
           <button type="submit" mat-raised-button color="primary" [disabled]="appraisalForm.invalid || !images.length || isSubmitting">
             <mat-icon>send</mat-icon>
-            Submit for Internet Appraisal
+            Submit for Appraisal
           </button>
           <button type="button" mat-raised-button color="warn" (click)="onCancel()">
             <mat-icon>close</mat-icon>
@@ -172,8 +172,19 @@
         <mat-card-subtitle>Please wait while we analyze your item</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <mat-progress-bar mode="determinate" [value]="processingProgress"></mat-progress-bar>
-        <p class="progress-text">{{processingProgress}}% complete</p>
+        <!-- Preprocessing Status -->
+        <div *ngIf="isPreprocessing" class="processing-step">
+          <h3>Preprocessing Image</h3>
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <p class="progress-text">Analyzing image features...</p>
+        </div>
+
+        <!-- Appraisal Processing Status -->
+        <div *ngIf="!isPreprocessing" class="processing-step">
+          <h3>Generating Appraisal</h3>
+          <mat-progress-bar mode="determinate" [value]="processingProgress"></mat-progress-bar>
+          <p class="progress-text">{{processingProgress}}% complete</p>
+        </div>
       </mat-card-content>
     </mat-card>
   </div>

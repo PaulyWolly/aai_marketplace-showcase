@@ -5,11 +5,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { WebcamImage, WebcamInitError, WebcamUtil } from 'ngx-webcam';
 import { Subject, Observable, interval, Subscription } from 'rxjs';
-import { takeWhile } from 'rxjs/operators';
+import { takeWhile, switchMap } from 'rxjs/operators';
 import { WebAppraisalService, WebAppraisalRequest, WebAppraisalResult } from '../../services/web-appraisal.service';
 import { AppraisalService } from '../../services/appraisal.service';
 import { CategoriesService } from '../../../../core/services/categories.service';
 import { ImageCaptureDialogComponent } from '../../../../shared/components/image-capture-dialog/image-capture-dialog.component';
+import { ImagePreprocessingService } from '../../services/image-preprocessing.service';
 
 @Component({
   selector: 'app-web-appraisal',
@@ -41,6 +42,8 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
   processingStage: 'form' | 'processing' | 'results' = 'form';
   pollingSubscription: Subscription | null = null;
   processingProgress = 0;
+  isPreprocessing = false;
+  preprocessingProgress = 0;
   
   constructor(
     private router: Router,
@@ -49,6 +52,7 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
     private webAppraisalService: WebAppraisalService,
     private appraisalService: AppraisalService,
     private categoriesService: CategoriesService,
+    private imagePreprocessingService: ImagePreprocessingService,
     private snackBar: MatSnackBar
   ) {
     this.categories = this.categoriesService.categories;
@@ -348,36 +352,63 @@ export class WebAppraisalComponent implements OnInit, OnDestroy {
   // Submit the appraisal
   submitAppraisal(): void {
     if (this.appraisalForm.invalid) {
-      this.snackBar.open('Please fill out all required fields', 'Close', { duration: 3000 });
+      this.snackBar.open('Please fill in all required fields', 'Close', { duration: 3000 });
       return;
     }
 
-    if (this.images.length === 0) {
-      this.snackBar.open('Please add at least one image', 'Close', { duration: 3000 });
+    const images = this.appraisalForm.get('images') as FormArray;
+    if (!images || images.length === 0) {
+      this.snackBar.open('Please capture or upload an image', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Get the first image and ensure it's a string
+    const firstImage = images.at(0).value;
+    if (!firstImage || typeof firstImage !== 'string') {
+      this.snackBar.open('Invalid image data', 'Close', { duration: 3000 });
       return;
     }
 
     this.isSubmitting = true;
+    this.isPreprocessing = true;
+    this.processingStage = 'processing';
     this.appraisalError = null;
-    
+
+    // Now we know firstImage is definitely a string
+    this.imageData = firstImage;
+
     const formData = this.appraisalForm.value;
     const request: WebAppraisalRequest = {
-      imageData: this.images.at(0)?.value,
-      ...formData
+      imageData: this.imageData,
+      itemType: formData.category,
+      additionalInfo: formData.details
     };
 
-    this.webAppraisalService.submitAppraisalRequest(request).subscribe({
-      next: (result) => {
-        this.currentAppraisal = result;
-        this.processingStage = 'processing';
-        this.startPolling(result.id);
-        this.isSubmitting = false;
-      },
-      error: (error) => {
-        this.appraisalError = error.message || 'Failed to submit appraisal request';
-        this.isSubmitting = false;
-      }
-    });
+    // First preprocess the image
+    this.imagePreprocessingService.preprocessImage(this.imageData)
+      .pipe(
+        switchMap(processedImage => {
+          // Then submit the appraisal with the processed image
+          const processedRequest = {
+            ...request,
+            imageData: processedImage
+          };
+          return this.webAppraisalService.submitAppraisalRequest(processedRequest);
+        })
+      )
+      .subscribe({
+        next: (result) => {
+          this.currentAppraisal = result;
+          this.isPreprocessing = false;
+          this.startPolling(result.id);
+        },
+        error: (error) => {
+          this.appraisalError = error.message || 'Failed to submit appraisal';
+          this.isSubmitting = false;
+          this.isPreprocessing = false;
+          this.processingStage = 'form';
+        }
+      });
   }
 
   startPolling(appraisalId: string): void {

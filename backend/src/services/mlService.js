@@ -2,8 +2,9 @@ const tf = require('@tensorflow/tfjs');
 const { createLogger, format, transports } = require('winston');
 const path = require('path');
 const fs = require('fs');
-const fsPromises = require('fs').promises;
+const fsPromises = fs.promises;
 const axios = require('axios');
+const ImagePreprocessingService = require('./imagePreprocessing.service');
 
 // Initialize logger
 const logger = createLogger({
@@ -38,7 +39,7 @@ class MLService {
     }
 
     // Set up model paths
-    this.modelPath = path.join(process.cwd(), 'models');
+    this.modelPath = path.join(__dirname, '../../models');
     
     // Create models directory if it doesn't exist
     if (!fs.existsSync(this.modelPath)) {
@@ -78,6 +79,8 @@ class MLService {
 
     // Set up periodic memory cleanup
     this.setupMemoryCleanup();
+
+    this.imagePreprocessing = new ImagePreprocessingService();
   }
 
   // Memory management methods
@@ -416,16 +419,23 @@ class MLService {
     };
   }
 
-  preprocessImageData(imageData) {
-    // Resize image to 224x224 and normalize pixel values
-    return tf.tidy(() => {
-      const tensor = tf.browser.fromPixels(imageData)
-        .resizeNearestNeighbor([224, 224])
-        .toFloat()
-        .div(255.0)
-        .expandDims(0);
-      return tensor;
-    });
+  async preprocessImageData(imageData) {
+    try {
+      // Use the new image preprocessing service
+      const preprocessedTensor = await this.imagePreprocessing.preprocessImage(imageData);
+      
+      // Extract color features
+      const colorFeatures = await this.imagePreprocessing.extractColorFeatures(preprocessedTensor);
+      
+      // Return both the preprocessed tensor and color features
+      return {
+        tensor: preprocessedTensor,
+        colorFeatures
+      };
+    } catch (error) {
+      logger.error('Error in image preprocessing:', error);
+      throw error;
+    }
   }
 
   // Encoding utilities
@@ -731,12 +741,14 @@ class MLService {
       // Process images and labels
       const images = [];
       const labels = [];
+      const colorFeatures = [];
       
       for (const item of data) {
         if (item.imageUrl) {
-          const imageTensor = await this.preprocessImageData(item.imageUrl);
-          images.push(imageTensor);
+          const { tensor, colorFeatures: features } = await this.preprocessImageData(item.imageUrl);
+          images.push(tensor);
           labels.push(this.encodeCategory(item.category));
+          colorFeatures.push(features);
         }
       }
 
@@ -765,10 +777,12 @@ class MLService {
       // Clean up tensors
       xs.dispose();
       ys.dispose();
+      images.forEach(tensor => tensor.dispose());
 
       return {
         history: history.history,
-        trainingSamples: data.length
+        trainingSamples: data.length,
+        colorFeatures
       };
     } catch (error) {
       logger.error('Image model training error:', error);
@@ -884,7 +898,7 @@ class MLService {
         throw new Error('Image classification model not initialized');
       }
 
-      const processedImage = await this.preprocessImageData(imageData);
+      const { tensor: processedImage, colorFeatures } = await this.preprocessImageData(imageData);
       const predictions = this.imageModel.predict(processedImage);
       const results = await predictions.array();
 
@@ -893,7 +907,8 @@ class MLService {
 
       return {
         category: this.decodeCategory(results[0].indexOf(Math.max(...results[0]))),
-        confidence: Math.max(...results[0])
+        confidence: Math.max(...results[0]),
+        colorFeatures
       };
     } catch (error) {
       logger.error('Image classification error:', error);

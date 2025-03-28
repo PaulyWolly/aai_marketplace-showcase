@@ -4,8 +4,8 @@
   "description": "AI-driven platform backend with Node.js and TensorFlow.js",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "jest"
   },
   "dependencies": {
@@ -19,7 +19,8 @@
     "mongoose": "^8.0.3",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.24.1",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "sharp": "^0.33.2"
   },
   "devDependencies": {
     "eslint": "^8.56.0",
